@@ -19,6 +19,18 @@ line. Earlier release history remains available in the original project's
 - Developers can print frame rate, frame time and free internal memory once a
   second over USB serial by setting `DEBUG_DISPLAY_PERFORMANCE` to 1.
 
+### Wi-Fi setup
+
+- The setup page shows the padlock for secured networks instead of garbled
+  characters.
+- iPhones no longer autocorrect or capitalise a network name typed into the
+  setup page.
+- When the grinder cannot join the saved network, it says why: network not
+  found, password rejected, signal too weak, connection refused, unsupported
+  security or no response. The explanation appears on the setup page and on
+  **Menu → Wi-Fi**, with a one-line summary on the ready screen's Wi-Fi tab.
+  See [Troubleshooting](docs/TROUBLESHOOTING.md#wi-fi-setup-does-not-connect).
+
 ### Desktop simulator
 
 - The desktop simulator also runs on macOS and Linux using SDL2. Run
