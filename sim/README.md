@@ -5,8 +5,9 @@ desktop window on Windows, macOS or Linux. It is intended for fast UI and
 grind-flow development without flashing or connecting a development board.
 
 The simulated panel has the same 280 x 456 logical resolution as the Waveshare
-display. It currently runs the production Ready screen, both production
-Grinding screen layouts, and the production Play/Stop/Complete control. A
+display. It currently runs the production Ready screen, the three production
+Grinding screen layouts (arc, chart and circle), and the production
+Play/Stop/Complete control. A
 deterministic grinder/load-cell model supplies rising weight, changing flow,
 motor run-on, settling, and completion data.
 
@@ -58,7 +59,7 @@ Use the on-screen circular button to start, stop, acknowledge, and restart the
 grind flow. The desktop-only keyboard shortcuts are kept outside the simulated
 panel UI:
 
-- `V`: switch between the production arc and chart grinding layouts
+- `V`: cycle through the production arc, chart and circle grinding layouts
 - `T`: tare the simulated load cell
 
 ## Automated smoke test
@@ -77,7 +78,9 @@ sim/run.sh --test
 
 The smoke scenario creates the production UI, starts a grind, verifies that the
 screen transitions to Grinding, and confirms that simulated load-cell weight
-advances.
+advances. A circle scenario runs a complete grind on the circle layout and
+checks that the circle grows with progress, then turns green and covers the
+display.
 
 The test command also runs deterministic render-budget benchmarks for the arc
 and chart layouts and for an animated Ready-screen tab swipe. They count LVGL

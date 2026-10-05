@@ -100,6 +100,16 @@ void GrindingUIController::register_events() {
         }, LV_EVENT_CLICKED, this);
     }
 
+    if (lv_obj_t* circle = ui_manager_->grinding_screen.get_circle_screen_obj()) {
+        lv_obj_add_event_cb(circle, [](lv_event_t* e) {
+            if (lv_event_get_code(e) == LV_EVENT_CLICKED) {
+                if (auto* controller = static_cast<GrindingUIController*>(lv_event_get_user_data(e))) {
+                    controller->handle_layout_toggle();
+                }
+            }
+        }, LV_EVENT_CLICKED, this);
+    }
+
     // NOTE: Purge confirm reuses existing grind_button_ (CANCEL) and pulse_button_ (CONTINUE)
     // No additional event registration needed - handle_pulse_button() checks for PURGE_CONFIRM phase
 }
@@ -280,12 +290,8 @@ void GrindingUIController::handle_layout_toggle() {
     if (ui_manager_->state_machine->is_state(UIState::GRINDING) ||
         ui_manager_->state_machine->is_state(UIState::GRIND_COMPLETE) ||
         ui_manager_->state_machine->is_state(UIState::GRIND_TIMEOUT)) {
-        GrindScreenLayout current_layout = ui_manager_->grinding_screen.get_layout();
-        if (current_layout == GrindScreenLayout::MINIMAL_ARC) {
-            ui_manager_->grinding_screen.set_layout(GrindScreenLayout::NERDY_CHART);
-        } else {
-            ui_manager_->grinding_screen.set_layout(GrindScreenLayout::MINIMAL_ARC);
-        }
+        ui_manager_->grinding_screen.cycle_layout();
+        update_grind_button_icon(); // The button outline depends on the layout
     }
 }
 
@@ -348,6 +354,15 @@ void GrindingUIController::update_grind_button_icon() {
                                       : lv_color_hex(THEME_COLOR_PRIMARY),
                                   0);
     }
+
+    // The circle screen fills the display with the result colour, which
+    // matches the OK/error button, so outline the button to keep it visible.
+    const bool result_shown = ui_manager_->state_machine->is_state(UIState::GRIND_COMPLETE) ||
+                              ui_manager_->state_machine->is_state(UIState::GRIND_TIMEOUT);
+    const bool outline = result_shown &&
+                         ui_manager_->grinding_screen.get_layout() == GrindScreenLayout::CIRCLE;
+    lv_obj_set_style_border_color(grind_button_, lv_color_hex(THEME_COLOR_TEXT_PRIMARY), 0);
+    lv_obj_set_style_border_width(grind_button_, outline ? 4 : 0, 0);
 
     update_button_layout();
 }
@@ -657,6 +672,7 @@ void GrindingUIController::enter_edit_state() {
 
 void GrindingUIController::enter_grinding_state() {
     WeightSensor* weight_sensor = ui_manager_->hardware_manager->get_weight_sensor();
+    ui_manager_->grinding_screen.set_outcome(GrindScreenOutcome::IN_PROGRESS);
     ui_manager_->grinding_screen.reset_chart_data();
     ui_manager_->grinding_screen.update_profile_name(
         ui_manager_->current_mode == GrindMode::MANUAL
@@ -682,6 +698,7 @@ void GrindingUIController::enter_grind_complete_state() {
     ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
     ui_manager_->grinding_screen.update_current_weight(final_grind_weight_);
     ui_manager_->grinding_screen.update_progress(final_grind_progress_);
+    ui_manager_->grinding_screen.set_outcome(GrindScreenOutcome::COMPLETE);
 }
 
 void GrindingUIController::enter_grind_timeout_state() {
@@ -696,6 +713,7 @@ void GrindingUIController::enter_grind_timeout_state() {
     ui_manager_->grinding_screen.update_target_weight_text(error_display);
     ui_manager_->grinding_screen.update_current_weight(error_grind_weight_);
     ui_manager_->grinding_screen.update_progress(error_grind_progress_);
+    ui_manager_->grinding_screen.set_outcome(GrindScreenOutcome::FAILED);
 }
 
 void GrindingUIController::enter_menu_state() {

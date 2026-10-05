@@ -50,6 +50,7 @@ void MenuUIController::register_events() {
 
     EventBridgeLVGL::register_handler(ET::GRIND_MODE_SWIPE_TOGGLE, [this](lv_event_t*) { handle_grind_mode_swipe_toggle(); });
     EventBridgeLVGL::register_handler(ET::GRIND_MODE_RADIO_BUTTON, [this](lv_event_t*) { handle_grind_mode_radio_button(); });
+    EventBridgeLVGL::register_handler(ET::GRIND_SCREEN_RADIO_BUTTON, [this](lv_event_t*) { handle_grind_screen_radio_button(); });
     EventBridgeLVGL::register_handler(ET::AUTO_START_TOGGLE, [this](lv_event_t*) { handle_auto_start_toggle(); });
     EventBridgeLVGL::register_handler(ET::AUTO_START_THRESHOLD_SLIDER, [this](lv_event_t*) { handle_auto_start_threshold_slider(); });
     EventBridgeLVGL::register_handler(ET::AUTO_START_THRESHOLD_SLIDER_RELEASED, [this](lv_event_t*) { handle_auto_start_threshold_slider_released(); });
@@ -367,6 +368,20 @@ void MenuUIController::handle_grind_mode_radio_button() {
     }
 
     LOG_DEBUG_PRINTLN(selected_index == 0 ? "Grind mode set to WEIGHT via radio button" : "Grind mode set to TIME via radio button");
+}
+
+void MenuUIController::handle_grind_screen_radio_button() {
+    if (!ui_manager_) return;
+
+    lv_obj_t* radio_group = ui_manager_->menu_screen.get_grind_screen_radio_group();
+    if (!radio_group) return;
+
+    const int selected_index = radio_button_group_get_selection(radio_group);
+    if (selected_index < 0 || selected_index >= static_cast<int>(GrindScreenLayout::COUNT)) return;
+
+    // Saves the choice; it applies to the next grind screen shown.
+    ui_manager_->grinding_screen.set_layout(static_cast<GrindScreenLayout>(selected_index));
+    LOG_DEBUG_PRINTF("Grind screen layout set to %d via radio button\n", selected_index);
 }
 
 void MenuUIController::handle_auto_start_toggle() {

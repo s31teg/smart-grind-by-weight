@@ -61,6 +61,7 @@ void MenuScreen::create(BluetoothManager* bluetooth, GrindController* grind_ctrl
     network_update_text.clear();
     network_update_button_visible = false;
     grinder_purge_mode_radio_group = nullptr;
+    grind_screen_radio_group = nullptr;
     grinder_purge_amount_slider = nullptr;
     grinder_purge_amount_label = nullptr;
     grind_freshness_hours_slider = nullptr;
@@ -547,6 +548,11 @@ static void grind_mode_callback(int selected_index, void* user_data) {
     EventBridgeLVGL::handle_event(EventBridgeLVGL::EventType::GRIND_MODE_RADIO_BUTTON, nullptr);
 }
 
+// Callback for grind screen layout radio button selection
+static void grind_screen_layout_callback(int selected_index, void* user_data) {
+    EventBridgeLVGL::handle_event(EventBridgeLVGL::EventType::GRIND_SCREEN_RADIO_BUTTON, nullptr);
+}
+
 // Callback for grinder purge mode radio button selection
 static void grinder_purge_mode_callback(int selected_index, void* user_data) {
     // Trigger the event system instead of handling directly
@@ -589,6 +595,21 @@ void MenuScreen::create_grind_mode_page(lv_obj_t* parent) {
 
     // Swipe toggle using existing pattern
     create_toggle_row(parent, "Swipe", &grind_mode_swipe_toggle);
+
+    // Grind screen layout; indexes match GrindScreenLayout
+    create_separator(parent, "Grind Screen");
+    create_description_label(parent, "Choose what the screen shows while grinding. You can also tap the screen during a grind to switch.");
+    const char* grind_screen_layouts[] = {"Arc", "Chart", "Circle"};
+    grind_screen_radio_group = create_radio_button_group(
+        parent,
+        grind_screen_layouts,
+        3,
+        LV_FLEX_FLOW_ROW,
+        0,  // Arc initially selected
+        -1, 100,  // Equal widths, height
+        grind_screen_layout_callback,
+        this
+    );
 
     // Automatic actions section
     create_separator(parent, "Automation");
@@ -1467,6 +1488,12 @@ void MenuScreen::update_grind_mode_toggles() {
 
     if (grind_mode_radio_group) {
         radio_button_group_set_selection(grind_mode_radio_group, mode_index);
+    }
+
+    // Tapping the screen during a grind may have changed the layout
+    if (grind_screen_radio_group && grinding_screen) {
+        radio_button_group_set_selection(grind_screen_radio_group,
+                                         static_cast<int>(grinding_screen->get_layout()));
     }
 
     if (grind_mode_swipe_toggle) {
