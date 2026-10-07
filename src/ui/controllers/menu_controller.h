@@ -29,6 +29,9 @@ public:
     void handle_grind_mode_swipe_toggle();
     void handle_grind_mode_radio_button();
     void handle_grind_screen_radio_button();
+    void handle_result_hold_toggle();
+    void handle_result_time_slider();
+    void handle_result_time_slider_released();
     void handle_auto_start_toggle();
     void handle_auto_start_threshold_slider();
     void handle_auto_start_threshold_slider_released();

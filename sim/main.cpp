@@ -30,7 +30,7 @@ constexpr uint32_t kSwipeDurationBudgetMs = 300;
 
 // A full grind on the circle layout takes about 9 seconds in the mock model.
 constexpr uint32_t kCircleSmokeTimeoutMs = 15000;
-// Lets the completion animation reach the full-display size before checking.
+// Lets the completion screen render before checking.
 constexpr uint32_t kCircleSettleMs = 400;
 
 ReadyScreen ready_screen;
@@ -425,8 +425,8 @@ int main(int argc, char** argv) {
         }
 
         if (circle_smoke && smoke_scenario_started) {
-            // The circle must grow while grinding, then turn green and cover
-            // the display once the grind completes.
+            // The circle must grow while grinding, then the display must turn
+            // solid green once the grind completes.
             lv_obj_t* circle = circle_screen.get_circle();
             const int32_t diameter = lv_obj_get_style_width(circle, LV_PART_MAIN);
             if (grinding) {
@@ -436,13 +436,18 @@ int main(int argc, char** argv) {
                 circle_completed_ms = now_ms();
             }
             if (circle_completed_ms != 0 && now_ms() - circle_completed_ms > kCircleSettleMs) {
+                // Both the circle and the corners around it must end up green.
+                lv_obj_t* screen = circle_screen.get_screen();
+                const lv_color_t success = lv_color_hex(THEME_COLOR_SUCCESS);
                 const bool grew = largest_grinding_diameter > THEME_GRIND_CIRCLE_MIN_DIAMETER_PX;
-                const bool covers_display = diameter == THEME_GRIND_CIRCLE_MAX_DIAMETER_PX;
-                const bool green = lv_color_eq(lv_obj_get_style_bg_color(circle, LV_PART_MAIN),
-                                               lv_color_hex(THEME_COLOR_SUCCESS));
-                std::printf("[circle-smoke] largest while grinding=%ldpx final=%ldpx green=%s\n",
+                const bool covers_display = lv_obj_get_style_bg_opa(screen, LV_PART_MAIN) == LV_OPA_COVER &&
+                                            lv_obj_get_width(screen) == kDisplayWidth &&
+                                            lv_obj_get_height(screen) == kDisplayHeight;
+                const bool green = lv_color_eq(lv_obj_get_style_bg_color(screen, LV_PART_MAIN), success) &&
+                                   lv_color_eq(lv_obj_get_style_bg_color(circle, LV_PART_MAIN), success);
+                std::printf("[circle-smoke] largest while grinding=%ldpx covered=%s green=%s\n",
                             static_cast<long>(largest_grinding_diameter),
-                            static_cast<long>(diameter), green ? "yes" : "no");
+                            covers_display ? "yes" : "no", green ? "yes" : "no");
                 if (!grew || !covers_display || !green) {
                     std::fprintf(stderr, "Circle screen did not grow and fill green.\n");
                     sim_platform::exit_process(8);

@@ -18,6 +18,7 @@
 #include "../components/blocking_overlay.h"
 #include "../components/ui_operations.h"
 #include "../event_bridge_lvgl.h"
+#include "../result_screen_settings.h"
 #include "../ui_helpers.h"
 #include "../ui_manager.h"
 #include "../screens/menu_screen.h"
@@ -51,6 +52,9 @@ void MenuUIController::register_events() {
     EventBridgeLVGL::register_handler(ET::GRIND_MODE_SWIPE_TOGGLE, [this](lv_event_t*) { handle_grind_mode_swipe_toggle(); });
     EventBridgeLVGL::register_handler(ET::GRIND_MODE_RADIO_BUTTON, [this](lv_event_t*) { handle_grind_mode_radio_button(); });
     EventBridgeLVGL::register_handler(ET::GRIND_SCREEN_RADIO_BUTTON, [this](lv_event_t*) { handle_grind_screen_radio_button(); });
+    EventBridgeLVGL::register_handler(ET::RESULT_HOLD_TOGGLE, [this](lv_event_t*) { handle_result_hold_toggle(); });
+    EventBridgeLVGL::register_handler(ET::RESULT_TIME_SLIDER, [this](lv_event_t*) { handle_result_time_slider(); });
+    EventBridgeLVGL::register_handler(ET::RESULT_TIME_SLIDER_RELEASED, [this](lv_event_t*) { handle_result_time_slider_released(); });
     EventBridgeLVGL::register_handler(ET::AUTO_START_TOGGLE, [this](lv_event_t*) { handle_auto_start_toggle(); });
     EventBridgeLVGL::register_handler(ET::AUTO_START_THRESHOLD_SLIDER, [this](lv_event_t*) { handle_auto_start_threshold_slider(); });
     EventBridgeLVGL::register_handler(ET::AUTO_START_THRESHOLD_SLIDER_RELEASED, [this](lv_event_t*) { handle_auto_start_threshold_slider_released(); });
@@ -382,6 +386,57 @@ void MenuUIController::handle_grind_screen_radio_button() {
     // Saves the choice; it applies to the next grind screen shown.
     ui_manager_->grinding_screen.set_layout(static_cast<GrindScreenLayout>(selected_index));
     LOG_DEBUG_PRINTF("Grind screen layout set to %d via radio button\n", selected_index);
+}
+
+void MenuUIController::handle_result_hold_toggle() {
+    if (!ui_manager_) return;
+
+    auto* toggle = ui_manager_->menu_screen.get_result_hold_toggle();
+    if (!toggle) return;
+
+    const bool hold = lv_obj_has_state(toggle, LV_STATE_CHECKED);
+
+    auto* hardware = ui_manager_->get_hardware_manager();
+    Preferences* prefs = hardware ? hardware->get_preferences() : nullptr;
+    if (prefs) {
+        prefs->putBool(result_screen_settings::kHoldFinalWeightKey, hold);
+    }
+    if (ui_manager_->grinding_controller_) {
+        ui_manager_->grinding_controller_->load_result_screen_settings();
+    }
+
+    LOG_DEBUG_PRINTLN(hold ? "Finished screen holds the final weight" : "Finished screen shows the live weight");
+}
+
+void MenuUIController::handle_result_time_slider() {
+    if (!ui_manager_) return;
+
+    auto* slider = ui_manager_->menu_screen.get_result_time_slider();
+    if (!slider) return;
+
+    ui_manager_->menu_screen.update_result_time_label(
+        result_screen_settings::seconds_for_choice(lv_slider_get_value(slider)));
+}
+
+void MenuUIController::handle_result_time_slider_released() {
+    if (!ui_manager_) return;
+
+    auto* slider = ui_manager_->menu_screen.get_result_time_slider();
+    if (!slider) return;
+
+    const uint32_t seconds = result_screen_settings::seconds_for_choice(lv_slider_get_value(slider));
+
+    auto* hardware = ui_manager_->get_hardware_manager();
+    Preferences* prefs = hardware ? hardware->get_preferences() : nullptr;
+    if (prefs) {
+        prefs->putUInt(result_screen_settings::kSecondsKey, seconds);
+    }
+    if (ui_manager_->grinding_controller_) {
+        ui_manager_->grinding_controller_->load_result_screen_settings();
+    }
+
+    ui_manager_->menu_screen.update_result_time_label(seconds);
+    LOG_DEBUG_PRINTF("Finished screen time set to %lus\n", static_cast<unsigned long>(seconds));
 }
 
 void MenuUIController::handle_auto_start_toggle() {

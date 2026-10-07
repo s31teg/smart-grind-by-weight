@@ -79,8 +79,8 @@ sim/run.sh --test
 The smoke scenario creates the production UI, starts a grind, verifies that the
 screen transitions to Grinding, and confirms that simulated load-cell weight
 advances. A circle scenario runs a complete grind on the circle layout and
-checks that the circle grows with progress, then turns green and covers the
-display.
+checks that the circle grows with progress, then that the display turns
+solid green.
 
 The test command also runs deterministic render-budget benchmarks for the arc
 and chart layouts and for an animated Ready-screen tab swipe. They count LVGL
