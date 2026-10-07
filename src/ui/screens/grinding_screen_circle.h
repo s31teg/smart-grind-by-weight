@@ -4,8 +4,8 @@
 #include "grinding_screen_base.h"
 
 // Mahlkonig E64 style: a light circle around the weight grows with grind
-// progress until it covers the display, which then turns green when the grind
-// completes (amber if it fails).
+// progress until it covers the display, which then turns green when the
+// grind completes (amber if it fails).
 class GrindingScreenCircle : public IGrindingScreen {
 private:
     lv_obj_t* screen;
@@ -18,13 +18,15 @@ private:
     float target_time_seconds_;
     int displayed_progress;
     GrindScreenOutcome outcome;
+    lv_color_t corner_color;  // Display background shown outside the circle
     char displayed_weight_text[16];
     int16_t diameter_by_percent[101];
 
     void build_diameter_table();
     int32_t diameter_for_progress(int percent) const;
     lv_obj_t* create_label(const lv_font_t* font);
-    void apply_outcome_colors();
+    void apply_colors(bool show_result);
+    void show_result_colors();
     void resize_circle(int32_t diameter, bool animate);
     static void set_circle_diameter(void* circle, int32_t diameter);
 

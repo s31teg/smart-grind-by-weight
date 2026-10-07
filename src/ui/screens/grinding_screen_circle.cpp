@@ -18,6 +18,7 @@ constexpr int32_t kTargetWidthPx = 210;
 // keeps the circle growing smoothly instead of jumping.
 constexpr uint32_t kGrowAnimationMs = 160;
 
+
 // Share of the display covered by a circle of this radius centred on it.
 float visible_share(float radius) {
     const float half_width = HW_DISPLAY_WIDTH_PX / 2.0f;
@@ -97,7 +98,8 @@ void GrindingScreenCircle::create() {
 
     displayed_progress = 0;
     outcome = GrindScreenOutcome::IN_PROGRESS;
-    apply_outcome_colors();
+    corner_color = lv_color_hex(THEME_COLOR_BACKGROUND);
+    apply_colors(false);
 
     visible = false;
     time_mode = false;
@@ -182,36 +184,53 @@ void GrindingScreenCircle::update_progress(int percent) {
 }
 
 void GrindingScreenCircle::set_outcome(GrindScreenOutcome new_outcome) {
-    outcome = new_outcome;
-    apply_outcome_colors();
-    if (outcome == GrindScreenOutcome::IN_PROGRESS) {
+    if (new_outcome == GrindScreenOutcome::IN_PROGRESS) {
+        outcome = new_outcome;
+        // The corners show the display background again while grinding.
+        lv_obj_set_style_bg_opa(screen, LV_OPA_TRANSP, 0);
+        apply_colors(false);
         // A new grind starts small without shrinking from the last result.
         displayed_progress = 0;
         resize_circle(diameter_for_progress(0), false);
-    } else {
-        resize_circle(THEME_GRIND_CIRCLE_MAX_DIAMETER_PX, visible);
+        return;
     }
+    // A time-mode pulse reports the same result again; keep showing it.
+    if (new_outcome == outcome) {
+        return;
+    }
+    outcome = new_outcome;
+    show_result_colors();
 }
 
 void GrindingScreenCircle::set_time_mode(bool enabled) {
     time_mode = enabled;
 }
 
-void GrindingScreenCircle::apply_outcome_colors() {
-    uint32_t fill = THEME_COLOR_GRIND_CIRCLE;
-    uint32_t text = THEME_COLOR_GRIND_CIRCLE_TEXT;
-    uint32_t secondary_text = THEME_COLOR_GRIND_CIRCLE_TEXT_SECONDARY;
-    if (outcome == GrindScreenOutcome::COMPLETE) {
-        fill = THEME_COLOR_SUCCESS;
-        text = THEME_COLOR_TEXT_PRIMARY;
-        secondary_text = THEME_COLOR_TEXT_PRIMARY;
-    } else if (outcome == GrindScreenOutcome::FAILED) {
-        fill = THEME_COLOR_WARNING;  // The dark text stays readable on amber
-    }
-    lv_obj_set_style_bg_color(circle, lv_color_hex(fill), 0);
-    lv_obj_set_style_text_color(weight_label, lv_color_hex(text), 0);
-    lv_obj_set_style_text_color(profile_label, lv_color_hex(secondary_text), 0);
-    lv_obj_set_style_text_color(target_label, lv_color_hex(secondary_text), 0);
+// The whole display switches to the result colour in one frame. Every part is
+// a solid colour, so the frame is quick to draw and send to the panel.
+void GrindingScreenCircle::show_result_colors() {
+    lv_anim_delete(circle, set_circle_diameter);
+    // Paint the corners outside the circle too, so the display is one colour.
+    corner_color = lv_obj_get_style_bg_color(lv_obj_get_parent(screen), LV_PART_MAIN);
+    lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
+    apply_colors(true);
+}
+
+// Colours the circle, the corners and the text for the grind in progress or
+// for its result.
+void GrindingScreenCircle::apply_colors(bool show_result) {
+    const bool complete = show_result && outcome == GrindScreenOutcome::COMPLETE;
+    const uint32_t result = complete ? THEME_COLOR_SUCCESS : THEME_COLOR_WARNING;
+    lv_obj_set_style_bg_color(circle, lv_color_hex(show_result ? result : THEME_COLOR_GRIND_CIRCLE), 0);
+    lv_obj_set_style_bg_color(screen, show_result ? lv_color_hex(result) : corner_color, 0);
+
+    // Dark text reads on the light circle and on amber; green needs white.
+    lv_obj_set_style_text_color(
+        weight_label, lv_color_hex(complete ? THEME_COLOR_TEXT_PRIMARY : THEME_COLOR_GRIND_CIRCLE_TEXT), 0);
+    const lv_color_t secondary_text =
+        lv_color_hex(complete ? THEME_COLOR_TEXT_PRIMARY : THEME_COLOR_GRIND_CIRCLE_TEXT_SECONDARY);
+    lv_obj_set_style_text_color(profile_label, secondary_text, 0);
+    lv_obj_set_style_text_color(target_label, secondary_text, 0);
 }
 
 void GrindingScreenCircle::resize_circle(int32_t diameter, bool animate) {
