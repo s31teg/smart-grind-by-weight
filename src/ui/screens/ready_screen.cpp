@@ -73,6 +73,12 @@ void ReadyScreen::create() {
     // Transparent background
     lv_obj_set_style_bg_opa(tabview, LV_OPA_TRANSP, 0);
 
+    for (int i = 0; i < PROFILE_TAB_COUNT; i++) {
+        profile_status_rows[i] = nullptr;
+        profile_status_labels[i] = nullptr;
+        profile_status_spinners[i] = nullptr;
+    }
+
     // Add manual and profile tabs
     manual_tab = lv_tabview_add_tab(tabview, "Manual");
     profile_tabs[0] = lv_tabview_add_tab(tabview, "Single");
@@ -137,21 +143,28 @@ void ReadyScreen::create_manual_page(lv_obj_t* parent) {
     lv_obj_set_style_text_align(safety_label, LV_TEXT_ALIGN_CENTER, 0);
 }
 
-void ReadyScreen::update_manual_scale(float weight, bool available, bool taring) {
+void ReadyScreen::update_manual_scale(float weight, ScaleReadiness readiness) {
     if (!manual_weight_label || !manual_scale_status_label || !manual_tare_button) return;
 
-    if (!available) {
-        lv_label_set_text(manual_weight_label, "--");
-        lv_label_set_text(manual_scale_status_label, "SCALE UNAVAILABLE");
-        lv_obj_add_state(manual_tare_button, LV_STATE_DISABLED);
-        return;
-    }
-
-    if (taring) {
-        lv_label_set_text(manual_weight_label, "TARING");
-        lv_label_set_text(manual_scale_status_label, "KEEP SCALE CLEAR");
-        lv_obj_add_state(manual_tare_button, LV_STATE_DISABLED);
-        return;
+    switch (readiness) {
+        case ScaleReadiness::UNAVAILABLE:
+            lv_label_set_text(manual_weight_label, "--");
+            lv_label_set_text(manual_scale_status_label, "SCALE UNAVAILABLE");
+            lv_obj_add_state(manual_tare_button, LV_STATE_DISABLED);
+            return;
+        case ScaleReadiness::STARTING:
+            // The startup tare zeroes whatever is on the scale.
+            lv_label_set_text(manual_weight_label, "STARTING");
+            lv_label_set_text(manual_scale_status_label, "KEEP SCALE CLEAR");
+            lv_obj_add_state(manual_tare_button, LV_STATE_DISABLED);
+            return;
+        case ScaleReadiness::TARING:
+            lv_label_set_text(manual_weight_label, "TARING");
+            lv_label_set_text(manual_scale_status_label, "KEEP SCALE CLEAR");
+            lv_obj_add_state(manual_tare_button, LV_STATE_DISABLED);
+            return;
+        case ScaleReadiness::READY:
+            break;
     }
 
     char weight_text[16];
@@ -278,6 +291,67 @@ void ReadyScreen::create_profile_page(lv_obj_t* parent, int profile_index, const
     snprintf(weight_text, sizeof(weight_text), SYS_WEIGHT_DISPLAY_FORMAT, weight);
     lv_label_set_text(weight_labels[profile_index], weight_text);
     lv_obj_add_flag(weight_labels[profile_index], LV_OBJ_FLAG_CLICKABLE);
+
+    create_profile_status(parent, profile_index);
+}
+
+// Floating, so showing or hiding it never moves the profile name and target.
+void ReadyScreen::create_profile_status(lv_obj_t* parent, int profile_index) {
+    lv_obj_t* row = lv_obj_create(parent);
+    lv_obj_add_flag(row, LV_OBJ_FLAG_FLOATING);
+    lv_obj_remove_flag(row, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_remove_flag(row, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_set_size(row, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(row, 0, 0);
+    lv_obj_set_style_pad_all(row, 0, 0);
+    lv_obj_set_layout(row, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_gap(row, 10, 0);
+    // Centred in the gap between the target weight and the Grind button,
+    // which is drawn over the bottom of this page.
+    lv_obj_align(row, LV_ALIGN_BOTTOM_MID, 0, -44);
+
+    lv_obj_t* label = lv_label_create(row);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_24, 0);
+    lv_obj_add_flag(row, LV_OBJ_FLAG_HIDDEN);
+
+    profile_status_rows[profile_index] = row;
+    profile_status_labels[profile_index] = label;
+}
+
+void ReadyScreen::set_profile_scale_status(const char* text, uint32_t color, bool busy) {
+    for (int i = 0; i < PROFILE_TAB_COUNT; i++) {
+        lv_obj_t* row = profile_status_rows[i];
+        if (!row) continue;
+
+        if (!text) {
+            lv_obj_add_flag(row, LV_OBJ_FLAG_HIDDEN);
+        } else {
+            lv_label_set_text(profile_status_labels[i], text);
+            lv_obj_set_style_text_color(profile_status_labels[i], lv_color_hex(color), 0);
+            lv_obj_clear_flag(row, LV_OBJ_FLAG_HIDDEN);
+        }
+
+        // The spinner animates every frame, so it only exists while needed.
+        const bool want_spinner = text && busy;
+        lv_obj_t*& spinner = profile_status_spinners[i];
+        if (want_spinner && !spinner) {
+            spinner = lv_spinner_create(row);
+            lv_obj_move_to_index(spinner, 0);
+            lv_obj_remove_flag(spinner, LV_OBJ_FLAG_CLICKABLE);
+            lv_obj_set_size(spinner, 26, 26);
+            lv_spinner_set_anim_params(spinner, 1000, 270);
+            lv_obj_set_style_arc_width(spinner, 4, LV_PART_MAIN);
+            lv_obj_set_style_arc_width(spinner, 4, LV_PART_INDICATOR);
+            lv_obj_set_style_arc_color(spinner, lv_color_hex(THEME_COLOR_NEUTRAL), LV_PART_MAIN);
+            lv_obj_set_style_arc_color(spinner, lv_color_hex(THEME_COLOR_ACCENT), LV_PART_INDICATOR);
+        } else if (!want_spinner && spinner) {
+            lv_obj_delete(spinner);
+            spinner = nullptr;
+        }
+    }
 }
 
 void ReadyScreen::create_menu_page(lv_obj_t* parent) {

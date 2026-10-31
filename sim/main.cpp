@@ -299,6 +299,47 @@ bool has_arg(int argc, char** argv, const char* expected) {
     return false;
 }
 
+// The "SCALE STARTING" line must sit between the profile target and the Grind
+// button, which is drawn over the bottom of the Ready screen area.
+bool check_scale_status_layout(lv_display_t* display) {
+    lv_tabview_set_act(ready_screen.get_tabview(), ReadyScreen::PROFILE_TAB_START_INDEX, LV_ANIM_OFF);
+    ready_screen.set_profile_scale_status("SCALE STARTING", THEME_COLOR_TEXT_SECONDARY, true);
+    lv_refr_now(display);
+
+    lv_obj_t* row = ready_screen.get_profile_status_row(0);
+    lv_obj_t* weight = ready_screen.get_profile_weight_label(0);
+    lv_area_t row_area;
+    lv_area_t weight_area;
+    lv_area_t button_area;
+    lv_obj_get_coords(row, &row_area);
+    lv_obj_get_coords(weight, &weight_area);
+    lv_obj_get_coords(grind_button, &button_area);
+    std::printf("[scale-status] target y=%d..%d status y=%d..%d x=%d..%d button y=%d..%d\n",
+                static_cast<int>(weight_area.y1), static_cast<int>(weight_area.y2),
+                static_cast<int>(row_area.y1), static_cast<int>(row_area.y2),
+                static_cast<int>(row_area.x1), static_cast<int>(row_area.x2),
+                static_cast<int>(button_area.y1), static_cast<int>(button_area.y2));
+
+    constexpr int32_t kMinGapPx = 6;
+    const bool visible = !lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN) && lv_obj_get_child_count(row) == 2;
+    const bool clear_of_target = row_area.y1 >= weight_area.y2 + kMinGapPx;
+    const bool clear_of_button = row_area.y2 + kMinGapPx <= button_area.y1;
+    const bool on_screen = row_area.x1 >= 0 && row_area.x2 < kDisplayWidth;
+
+    ready_screen.set_profile_scale_status(nullptr, THEME_COLOR_TEXT_SECONDARY, false);
+    lv_refr_now(display);
+    const bool hides = lv_obj_has_flag(row, LV_OBJ_FLAG_HIDDEN) && lv_obj_get_child_count(row) == 1;
+
+    if (!visible || !clear_of_target || !clear_of_button || !on_screen || !hides) {
+        std::fprintf(stderr, "Scale status layout check failed: visible=%d target=%d button=%d "
+                             "on_screen=%d hides=%d\n",
+                     visible, clear_of_target, clear_of_button, on_screen, hides);
+        return false;
+    }
+    std::puts("[scale-status] layout ok");
+    return true;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -307,6 +348,7 @@ int main(int argc, char** argv) {
     const bool swipe_benchmark = has_arg(argc, argv, "--swipe-benchmark");
     const bool manual_smoke = has_arg(argc, argv, "--manual-smoke");
     const bool circle_smoke = has_arg(argc, argv, "--circle-smoke");
+    const bool scale_status_check = has_arg(argc, argv, "--scale-status-check");
 
     if (smoke_test) {
         std::puts("[smoke] starting simulator");
@@ -317,7 +359,8 @@ int main(int argc, char** argv) {
     lv_tick_set_cb(now_ms);
 
     const bool automated_run =
-        smoke_test || benchmark || swipe_benchmark || manual_smoke || circle_smoke;
+        smoke_test || benchmark || swipe_benchmark || manual_smoke || circle_smoke ||
+        scale_status_check;
     lv_display_t* display =
         sim_platform::create_display(kDisplayWidth, kDisplayHeight, automated_run);
     if (!display) {
@@ -346,6 +389,10 @@ int main(int argc, char** argv) {
     if (smoke_test) {
         std::puts("[smoke] UI created");
         std::fflush(stdout);
+    }
+
+    if (scale_status_check) {
+        return check_scale_status_layout(display) ? 0 : 8;
     }
 
     const uint32_t smoke_started_ms = now_ms();

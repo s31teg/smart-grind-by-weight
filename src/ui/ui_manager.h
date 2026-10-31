@@ -138,6 +138,8 @@ public:
     
     void set_background_active(bool active);
     bool refresh_auto_action_settings(bool verify_storage = false);
+    // False while the scale is starting or taring, or unavailable in weight mode.
+    bool profile_grind_allowed() const;
     
 
 private:

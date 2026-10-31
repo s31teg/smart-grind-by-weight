@@ -178,6 +178,10 @@ void UIManager::update() {
         return;
     }
     
+    if (ready_controller_) {
+        ready_controller_->refresh_scale_readiness();
+    }
+
     // Update based on current state
     UIState current = state_machine->get_current_state();
     
@@ -431,6 +435,10 @@ bool UIManager::refresh_auto_action_settings(bool verify_storage) {
     return true;
 }
 
+bool UIManager::profile_grind_allowed() const {
+    return !ready_controller_ || ready_controller_->profile_grind_allowed();
+}
+
 void UIManager::update_auto_actions() {
     if ((!auto_actions_.auto_start_enabled && !auto_actions_.auto_return_enabled) ||
         !hardware_manager || !state_machine) {
@@ -458,7 +466,8 @@ void UIManager::update_auto_actions() {
     const bool on_ready_tab = state_machine->is_state(UIState::READY) &&
                               ReadyScreen::is_profile_tab(current_tab);
 
-    if (auto_actions_.auto_start_enabled && on_ready_tab && !grinder_active && grinding_controller_) {
+    if (auto_actions_.auto_start_enabled && on_ready_tab && !grinder_active && grinding_controller_ &&
+        profile_grind_allowed()) {
         update_auto_start(sensor, now);
     } else {
         auto_start_tracker_.reset();

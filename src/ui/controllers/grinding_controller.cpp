@@ -217,6 +217,11 @@ void GrindingUIController::handle_grind_button() {
         if (ui_manager_->current_tab == ReadyScreen::WIFI_TAB_INDEX) return;
 
         const bool manual = ui_manager_->current_tab == ReadyScreen::MANUAL_TAB_INDEX;
+        if (!manual && !ui_manager_->profile_grind_allowed()) {
+            // The profile page already says why; the greyed button needs no popup.
+            LOG_BLE("[%lums GRIND_START] Ignored: scale not ready\n", millis());
+            return;
+        }
         if (!manual && ui_manager_->grind_controller && ui_manager_->profile_controller) {
             ui_manager_->grind_controller->set_grind_profile_id(ui_manager_->profile_controller->get_current_profile());
         }
@@ -352,9 +357,13 @@ void GrindingUIController::update_grind_button_icon() {
         lv_img_set_src(grind_icon_, LV_SYMBOL_WIFI);
         lv_obj_set_style_bg_color(grind_button_, lv_color_hex(THEME_COLOR_NEUTRAL), 0);
     } else {
+        const bool scale_blocks_grind = ui_manager_->state_machine->is_state(UIState::READY) &&
+                                        ReadyScreen::is_profile_tab(ui_manager_->current_tab) &&
+                                        !ui_manager_->profile_grind_allowed();
         lv_img_set_src(grind_icon_, LV_SYMBOL_PLAY);
         lv_obj_set_style_bg_color(grind_button_,
-                                  ui_manager_->current_mode == GrindMode::TIME
+                                  scale_blocks_grind ? lv_color_hex(THEME_COLOR_NEUTRAL)
+                                  : ui_manager_->current_mode == GrindMode::TIME
                                       ? lv_color_hex(THEME_COLOR_ACCENT)
                                       : lv_color_hex(THEME_COLOR_PRIMARY),
                                   0);

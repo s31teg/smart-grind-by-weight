@@ -67,6 +67,10 @@
 // Asymmetric display filter for smooth weight updates
 #define SYS_DISPLAY_FILTER_ALPHA_DOWN 0.9f                                     // Slower decay when weight decreases
 
+// Load cell startup normally finishes about 7 s after power-on; past this the
+// Ready screen reports the scale as unavailable instead of still starting.
+#define SYS_SCALE_STARTUP_TIMEOUT_MS 20000
+
 //------------------------------------------------------------------------------
 // JOG ACCELERATION CONFIGURATION
 //------------------------------------------------------------------------------

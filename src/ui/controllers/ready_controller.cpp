@@ -21,12 +21,9 @@ void ReadyUIController::update() {
         last_manual_scale_update_ms_ = now;
         auto* hardware = ui_manager_->get_hardware_manager();
         auto* sensor = hardware ? hardware->get_weight_sensor() : nullptr;
-        const bool available = sensor && !sensor->has_hardware_fault() &&
-                               sensor->get_sample_count() > 0;
+        const bool ready = sensor && scale_readiness_ == ScaleReadiness::READY;
         ui_manager_->ready_screen.update_manual_scale(
-            available ? sensor->get_display_weight() : 0.0f,
-            available,
-            available && sensor->is_tare_in_progress());
+            ready ? sensor->get_display_weight() : 0.0f, scale_readiness_);
     }
 
     if (now - last_network_update_ms_ >= 500) {
@@ -44,14 +41,76 @@ void ReadyUIController::handle_manual_tare() {
 
     auto* hardware = ui_manager_->get_hardware_manager();
     auto* sensor = hardware ? hardware->get_weight_sensor() : nullptr;
-    if (!sensor || sensor->has_hardware_fault() || sensor->get_sample_count() <= 0 ||
-        sensor->is_tare_in_progress()) {
+    if (!sensor || scale_readiness_ != ScaleReadiness::READY) {
         return;
     }
 
     sensor->start_nonblocking_tare();
-    ui_manager_->ready_screen.update_manual_scale(0.0f, true, true);
+    ui_manager_->ready_screen.update_manual_scale(0.0f, ScaleReadiness::TARING);
     LOG_BLE("Manual page tare requested\n");
+}
+
+void ReadyUIController::refresh_scale_readiness() {
+    if (!ui_manager_) return;
+
+    auto* hardware = ui_manager_->get_hardware_manager();
+    auto* sensor = hardware ? hardware->get_weight_sensor() : nullptr;
+    ScaleSignals signals{true, false, false, false};
+    if (sensor) {
+        signals = {sensor->has_hardware_fault(), sensor->has_valid_tare(),
+                   sensor->is_tare_in_progress(), sensor->has_recent_sample()};
+    }
+
+    const ScaleReadiness previous = scale_readiness_;
+    scale_readiness_ = scale_tracker_.update(signals, millis(), SYS_SCALE_STARTUP_TIMEOUT_MS);
+    if (scale_readiness_ != previous) {
+        LOG_BLE("[SCALE] Ready screen status: %s\n",
+                scale_readiness_ == ScaleReadiness::READY      ? "ready" :
+                scale_readiness_ == ScaleReadiness::STARTING   ? "starting" :
+                scale_readiness_ == ScaleReadiness::TARING     ? "taring" : "unavailable");
+    }
+
+    const bool weight_mode = profile_mode_is_weight();
+    if (status_shown_ && shown_readiness_ == scale_readiness_ && shown_weight_mode_ == weight_mode) {
+        return;
+    }
+    status_shown_ = true;
+    shown_readiness_ = scale_readiness_;
+    shown_weight_mode_ = weight_mode;
+
+    show_profile_scale_status();
+    if (ui_manager_->grinding_controller_) {
+        ui_manager_->grinding_controller_->update_grind_button_icon();
+    }
+}
+
+bool ReadyUIController::profile_grind_allowed() const {
+    return scale_allows_profile_grind(scale_readiness_, profile_mode_is_weight());
+}
+
+bool ReadyUIController::profile_mode_is_weight() const {
+    return !ui_manager_ || !ui_manager_->profile_controller ||
+           ui_manager_->profile_controller->get_grind_mode() == GrindMode::WEIGHT;
+}
+
+void ReadyUIController::show_profile_scale_status() {
+    ReadyScreen& screen = ui_manager_->ready_screen;
+    switch (scale_readiness_) {
+        case ScaleReadiness::STARTING:
+            screen.set_profile_scale_status("SCALE STARTING", THEME_COLOR_TEXT_SECONDARY, true);
+            break;
+        case ScaleReadiness::TARING:
+            screen.set_profile_scale_status("TARING", THEME_COLOR_TEXT_SECONDARY, true);
+            break;
+        case ScaleReadiness::UNAVAILABLE:
+            // A time grind still works without the scale, so only warn in weight mode.
+            screen.set_profile_scale_status(profile_mode_is_weight() ? "SCALE UNAVAILABLE" : nullptr,
+                                            THEME_COLOR_WARNING, false);
+            break;
+        case ScaleReadiness::READY:
+            screen.set_profile_scale_status(nullptr, THEME_COLOR_TEXT_SECONDARY, false);
+            break;
+    }
 }
 
 void ReadyUIController::refresh_profiles() {

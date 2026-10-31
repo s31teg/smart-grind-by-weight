@@ -21,8 +21,9 @@ tap **TARE** if you want to weigh the result; taring is never automatic in
 Manual mode. During grinding, the screen shows live weight and elapsed motor
 time.
 
-Manual start/stop works without a load cell; the scale readout and TARE button
-simply report that the scale is unavailable. Manual mode deliberately skips
+Manual start/stop works without a load cell, and while the scale is still
+starting; the scale readout shows **STARTING** or reports that the scale is
+unavailable, and the TARE button stays disabled. Manual mode deliberately skips
 automatic taring, purging, predictive stopping, finishing pulses and
 grind-history recording. It still adds the real motor run time to lifetime
 statistics and stops automatically after 30 seconds. Use Single, Double or
@@ -65,6 +66,14 @@ Access **Menu → Grind Settings** to configure:
   *Explanation:* The time between motor start and grinds hitting the cup (grind latency) is used to predict the coast time (how long grinds will keep coming after the motor is disengaged). Purging clears stale coffee and saturates the grinder with fresh grounds, ensuring accurate latency detection. If you prefer to keep all coffee without manual intervention, select Prime mode.
 
 ### Basic Operation
+
+After power-on the scale takes about seven seconds to start and zero itself.
+Until then the profile pages show a spinner with **SCALE STARTING**, the GRIND
+button is grey and does nothing, and Start on Cup stays off. Keep the scale
+clear while it starts: anything on it becomes part of the zero. If the scale
+has not started after 20 seconds, the pages show **SCALE UNAVAILABLE** in weight
+mode; time-mode grinds still work without the scale.
+
 These steps describe the default grind-by-weight workflow:
 1. Select profile by tapping on the main screen
 2. Long press the profile target to edit/customize the weight if needed

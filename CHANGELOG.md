@@ -6,6 +6,18 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+### Scale startup
+
+- After power-on the profile pages show a spinner with "SCALE STARTING" until
+  the load cell has finished its startup tare, about seven seconds. The GRIND
+  button is grey and does nothing until then, instead of showing "Could not
+  start", and Start on Cup waits for the scale too.
+- The Manual page shows "STARTING" during that time instead of "SCALE
+  UNAVAILABLE".
+- If the scale has not started after 20 seconds, or stops sending readings,
+  the profile pages show "SCALE UNAVAILABLE" in weight mode. Time-mode grinds
+  still work without the scale.
+
 ### Start on Cup
 
 - A cup or portafilter that takes a while to position now still starts the

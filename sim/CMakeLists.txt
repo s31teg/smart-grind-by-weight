@@ -98,6 +98,13 @@ target_include_directories(auto-start-policy-test PRIVATE
     "${PROJECT_ROOT}/src"
 )
 
+add_executable(scale-readiness-test
+    scale_readiness_test.cpp
+)
+target_include_directories(scale-readiness-test PRIVATE
+    "${PROJECT_ROOT}/src"
+)
+
 if(MSVC)
     target_compile_options(smart-grind-sim PRIVATE /W4 /permissive-)
 endif()
@@ -111,6 +118,8 @@ if(BUILD_TESTING)
     set_tests_properties(simulator_swipe_budget PROPERTIES TIMEOUT 10)
     add_test(NAME simulator_manual_smoke COMMAND smart-grind-sim --manual-smoke)
     set_tests_properties(simulator_manual_smoke PROPERTIES TIMEOUT 15)
+    add_test(NAME simulator_scale_status COMMAND smart-grind-sim --scale-status-check)
+    set_tests_properties(simulator_scale_status PROPERTIES TIMEOUT 10)
     add_test(NAME simulator_circle_smoke COMMAND smart-grind-sim --circle-smoke)
     set_tests_properties(simulator_circle_smoke PROPERTIES TIMEOUT 20)
     add_test(NAME display_idle_policy COMMAND display-idle-policy-test)
@@ -123,4 +132,6 @@ if(BUILD_TESTING)
     set_tests_properties(wifi_join_failure PROPERTIES TIMEOUT 5)
     add_test(NAME auto_start_policy COMMAND auto-start-policy-test)
     set_tests_properties(auto_start_policy PROPERTIES TIMEOUT 5)
+    add_test(NAME scale_readiness COMMAND scale-readiness-test)
+    set_tests_properties(scale_readiness PROPERTIES TIMEOUT 5)
 endif()
