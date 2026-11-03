@@ -1,5 +1,6 @@
 # Smart Grind-by-Weight
 
+[![Latest release](https://img.shields.io/github/v/release/s31teg/smart-grind-by-weight?display_name=tag&logo=github)](https://github.com/s31teg/smart-grind-by-weight/releases/latest)
 [![Hardware](https://img.shields.io/badge/hardware-Waveshare%20V1%20%7C%20V2-6f42c1)](docs/GRINDER_COMPATIBILITY.md)
 [![Desktop simulator](https://img.shields.io/badge/simulator-Windows%20%7C%20macOS%20%7C%20Linux-0a7ea4)](sim/README.md)
 [![Based on](https://img.shields.io/badge/based%20on-Clinteastman%2Fsmart--grind--by--weight-555)](https://github.com/Clinteastman/smart-grind-by-weight)
@@ -13,13 +14,14 @@ motor off before the target, then uses controlled pulses to finish the dose.
 > **This is s31teg's fork** of the
 > [community-maintained Smart Grind-by-Weight](https://github.com/Clinteastman/smart-grind-by-weight),
 > which itself continues [Jaap Pieroen's original project](https://github.com/jaapp/smart-grind-by-weight).
-> It adds the display, Start on Cup and finished-screen work listed below, and
-> redrawn wiring diagrams for both board generations. Everything else matches
-> the upstream release line, and the original authors remain credited.
+> Version 2.0.0 adds the display, Start on Cup and finished-screen work listed
+> below and redrawn wiring diagrams for both board generations, with its own
+> releases, web flasher and over-the-air updates. Everything else matches the
+> upstream 1.5.9 release, and the original authors remain credited.
 
+**[Flash firmware](https://s31teg.github.io/smart-grind-by-weight/)** ·
 **[What this fork adds](#what-this-fork-adds)** ·
 **[Wiring diagrams](#wiring-diagrams)** ·
-**[Installing this fork's firmware](#installing-this-forks-firmware)** ·
 **[Build & installation guide](docs/DOC.md#start-here)** ·
 **[Troubleshooting](docs/TROUBLESHOOTING.md)**
 
@@ -99,7 +101,7 @@ network not found, password rejected, signal too weak and so on.
 Windows, with layout checks that catch overlapping text before it reaches the
 grinder. BLE delta updates pick the archive built for the matching board.
 
-The full list is in the [changelog](CHANGELOG.md#unreleased).
+The full list is in the [2.0.0 changelog](CHANGELOG.md#200---2026-11-03).
 
 ## Wiring diagrams
 
@@ -123,27 +125,32 @@ full-size image; the editable SVG sources sit beside them in [`media/`](media/).
 
 ## Installing this fork's firmware
 
-This fork does not publish releases, so build the firmware for your board and
-upload it to the grinder:
+**[Open the web flasher](https://s31teg.github.io/smart-grind-by-weight/)** in
+Chrome or Edge on a computer or Android phone, connect the board by USB and
+choose V1 or V2. It installs the latest
+[release](https://github.com/s31teg/smart-grind-by-weight/releases) of this
+edition.
+
+Already running Smart Grind 1.5.x? You don't need USB. Download the matching
+application file from the
+[latest release](https://github.com/s31teg/smart-grind-by-weight/releases/latest)
+and upload it on the grinder's web page under **System & updates → Manual
+firmware file**:
+
+| Board | File |
+| --- | --- |
+| V1 (original CO5300 display) | `smart-grind-by-weight-v2.0.0.bin` |
+| V2 (SH8601 display, may say Rev1.1) | `smart-grind-by-weight-v2.0.0-waveshare-164-v2.bin` |
+
+Settings are kept. From then on the grinder checks this fork for new releases,
+and the green update icon installs them.
+
+To build it yourself instead, see [DEVELOPMENT.md](docs/DEVELOPMENT.md):
 
 ```bash
-# V2 board (use --hardware v1 for V1)
-python3 tools/grinder.py build --hardware v2 --jobs 8
-
-# Upload over Bluetooth
-python3 tools/grinder.py upload
+python3 tools/grinder.py build --hardware v2 --jobs 8   # or --hardware v1
+python3 tools/grinder.py upload                         # over Bluetooth
 ```
-
-You can also upload the built `.bin` from the grinder's web page under
-**System & updates → Manual firmware file**. Settings are kept across firmware
-updates. See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for the PlatformIO setup and
-USB recovery.
-
-> [!IMPORTANT]
-> The grinder's one-click updater, the green update icon and the
-> [web flasher](https://clinteastman.github.io/smart-grind-by-weight/) all
-> install the **upstream** release. That replaces this fork's firmware and
-> removes the features above until you upload this fork's build again.
 
 > [!TIP]
 > **Using Home Assistant?** Add automatic discovery, live local-push sensors,
@@ -246,11 +253,9 @@ for longer-term archives and recovery workflows.
    connector/component checks in
    [Display stays black after flashing](docs/TROUBLESHOOTING.md#display-stays-black-after-flashing-waveshare-164-v2).
 4. **Flash the matching image.** Open the
-   [Community Web Flasher](https://clinteastman.github.io/smart-grind-by-weight/)
-   in Chrome or Edge on desktop/Android and explicitly select V1 or V2. That
-   installs the upstream release; then
-   [upload this fork's build](#installing-this-forks-firmware) over Bluetooth
-   or Wi-Fi. USB recovery instructions and command-line alternatives are in the
+   [Web Flasher](https://s31teg.github.io/smart-grind-by-weight/)
+   in Chrome or Edge on desktop/Android and explicitly select V1 or V2. USB
+   recovery instructions and command-line alternatives are in the
    [development guide](docs/DEVELOPMENT.md).
 5. **Wire, assemble and calibrate.** Follow the ordered
    [build and installation checklist](docs/DOC.md#start-here) and the
@@ -351,9 +356,10 @@ particularly useful.
 
 ## Releases and license
 
-Read the versioned [changelog](CHANGELOG.md), download tested builds from
-[Community Releases](https://github.com/Clinteastman/smart-grind-by-weight/releases),
-or consult the [original release archive](https://github.com/jaapp/smart-grind-by-weight/releases).
+Read the versioned [changelog](CHANGELOG.md), download this edition's builds
+from [Releases](https://github.com/s31teg/smart-grind-by-weight/releases), or
+consult the [community releases](https://github.com/Clinteastman/smart-grind-by-weight/releases)
+and the [original release archive](https://github.com/jaapp/smart-grind-by-weight/releases).
 
 Smart Grind-by-Weight is free software distributed under the
 [GNU General Public License v3.0 or later](LICENSE).

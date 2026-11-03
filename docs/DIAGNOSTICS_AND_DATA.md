@@ -33,7 +33,7 @@ report below remains available through the legacy Bluetooth tooling.
 ### Access Methods
 
 **Web Flasher (Recommended):**
-1. Visit the [Community Web Flasher Tool](https://clinteastman.github.io/smart-grind-by-weight/)
+1. Visit the [Web Flasher Tool](https://s31teg.github.io/smart-grind-by-weight/)
 2. Navigate to the **Diagnostics** tab
 3. Click "Connect & Get Diagnostics"
 4. Copy to clipboard or download the report as a text file

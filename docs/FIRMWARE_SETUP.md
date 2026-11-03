@@ -23,7 +23,7 @@ The external wiring also differs: V1 uses GPIO 2 for HX711 SCK and GPIO 18 for m
 If the board was supplied with V2 factory firmware, or Waveshare's [official V2 demo](https://github.com/waveshareteam/ESP32-S3-Touch-AMOLED-1.64-v2) works while V1 firmware stays black, use the V2 build target. See the [black-display troubleshooting entry](TROUBLESHOOTING.md#display-stays-black-after-flashing-waveshare-164-v2) before wiring the grinder.
 
 ### Web flasher (recommended)
-**[🔗 Open Community Web Flasher Tool](https://clinteastman.github.io/smart-grind-by-weight/)**
+**[🔗 Open Web Flasher Tool](https://s31teg.github.io/smart-grind-by-weight/)**
 
 Before flashing, verify that the selected image matches the display generation. Choose **Original CO5300 (V1 firmware)** or **Newer SH8601 (V2 firmware; may say Rev1.1)**. If uncertain, use the official-demo test above; flashing the original CO5300 image to SH8601 hardware produces a black screen.
 
@@ -51,7 +51,7 @@ Before flashing, verify that the selected image matches the display generation. 
    - The grinder chooses the matching V1 or V2 image, validates it, installs it
      and restarts; keep it powered until the update completes
    - Manual `.bin` upload from the
-     [Community releases page](https://github.com/Clinteastman/smart-grind-by-weight/releases)
+     [Releases page](https://github.com/s31teg/smart-grind-by-weight/releases)
      remains available as an advanced fallback
 
    BLE updating remains available as a fallback when the grinder cannot join
@@ -81,7 +81,7 @@ upload a matching release image with:
 python3 tools/grinder.py upload smart-grind-by-weight-vX.X.X.bin
 ```
 
-**Manual firmware download:** [Community releases page](https://github.com/Clinteastman/smart-grind-by-weight/releases)
+**Manual firmware download:** [Releases page](https://github.com/s31teg/smart-grind-by-weight/releases)
 
 **Build from source:** See [DEVELOPMENT.md](DEVELOPMENT.md)
 

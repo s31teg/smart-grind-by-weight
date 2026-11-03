@@ -65,8 +65,8 @@ safety limits and frequently asked questions.
 
 ## Quick links
 
-**[Install firmware](https://clinteastman.github.io/smart-grind-by-weight/)** ·
-**[Latest release](https://github.com/Clinteastman/smart-grind-by-weight/releases/latest)** ·
+**[Install firmware](https://s31teg.github.io/smart-grind-by-weight/)** ·
+**[Latest release](https://github.com/s31teg/smart-grind-by-weight/releases/latest)** ·
 **[Compatibility](GRINDER_COMPATIBILITY.md)** ·
 **[3D designs](3D_PRINTS.md)** ·
 **[Troubleshooting](TROUBLESHOOTING.md)** ·

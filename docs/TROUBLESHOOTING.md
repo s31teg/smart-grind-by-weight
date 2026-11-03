@@ -184,7 +184,7 @@ These modes control the motor through the normal guarded grind controller and
 do not require a working HX711. Weight mode, live weight, tare, calibration,
 start-on-cup and weight-based stopping remain unavailable until the scale is
 repaired. The matching V1/V2 images are available from the
-[Community Web Flasher](https://clinteastman.github.io/smart-grind-by-weight/).
+[Web Flasher](https://s31teg.github.io/smart-grind-by-weight/).
 
 The resistance checks above follow standard Wheatstone-bridge fault isolation:
 compare excitation and signal resistance with the load-cell specification and
@@ -377,7 +377,7 @@ This information helps identify configuration issues, hardware problems, or firm
 
 #### Option 1: Web Flasher (Recommended)
 
-1. Visit the **[Community Web Flasher Diagnostics Tool](https://clinteastman.github.io/smart-grind-by-weight/)**
+1. Visit the **[Web Flasher Diagnostics Tool](https://s31teg.github.io/smart-grind-by-weight/)**
 2. Click the **"Diagnostics"** tab
 3. Click **"Connect & Get Diagnostics"**
 4. Select your device from the Bluetooth pairing dialog

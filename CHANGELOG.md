@@ -6,6 +6,25 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-03
+
+The first release of s31teg's edition. It builds on the community 1.5.9
+release with a new circle grind screen, a finished-screen timer, a stop when
+the portafilter is lifted, a more forgiving Start on Cup, a faster V2 display,
+Wi-Fi setup fixes and redrawn V1 and V2 wiring diagrams. Settings are kept
+when you install it over 1.5.x.
+
+### Updates from this edition
+
+- The grinder's update check, the green update icon and **System & updates**
+  now install releases from
+  [s31teg/smart-grind-by-weight](https://github.com/s31teg/smart-grind-by-weight/releases).
+- This edition has its own
+  [web flasher](https://s31teg.github.io/smart-grind-by-weight/) for first
+  installs and USB recovery, with V1 and V2 firmware.
+- Installing a 1.5.x community release over this one replaces it; the
+  grinder only offers releases from this edition.
+
 ### Status icons
 
 - The Bluetooth, Wi-Fi, warning and update icons no longer cover text or
@@ -15,6 +34,8 @@ line. Earlier release history remains available in the original project's
   the screen for their own titles and buttons, so the icons are hidden there.
 - The arc and chart grinding screens start their content below the icons. On
   the chart screen the finished timer sits in the chart's top-left corner.
+- On the circle layout's green or amber result screen the icons turn white,
+  so the green connected icons stay visible.
 - The Wi-Fi page on the main screen starts below the icons, with a slightly
   smaller setup QR code so a join-failure message still fits.
 
@@ -464,6 +485,7 @@ Original commit authorship is retained in the repository history; the release
 also includes separately authored review, hardware-support and integration
 fixes described above.
 
+[2.0.0]: https://github.com/s31teg/smart-grind-by-weight/releases/tag/v2.0.0
 [1.5.0]: https://github.com/Clinteastman/smart-grind-by-weight/releases/tag/v1.5.0
 [1.5.1]: https://github.com/Clinteastman/smart-grind-by-weight/releases/tag/v1.5.1
 [1.5.2]: https://github.com/Clinteastman/smart-grind-by-weight/releases/tag/v1.5.2
