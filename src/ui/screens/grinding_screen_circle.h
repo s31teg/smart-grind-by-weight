@@ -47,6 +47,9 @@ public:
     void update_result_timer(const char* text) override;
     lv_obj_t* get_result_timer_label() const override { return result_timer_label; }
 
+    // True once the whole display shows the green or amber result colour.
+    bool shows_result_colors() const { return outcome != GrindScreenOutcome::IN_PROGRESS; }
+
     bool is_visible() const override { return visible; }
     lv_obj_t* get_screen() const override { return screen; }
     lv_obj_t* get_circle() const { return circle; }

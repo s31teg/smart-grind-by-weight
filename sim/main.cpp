@@ -698,10 +698,18 @@ bool save_documentation_screenshots(lv_display_t* display, const char* folder) {
         grind_completed = true;
         set_grind_button(LV_SYMBOL_OK, THEME_COLOR_SUCCESS);
         update_grind_button_outline();
+        // As in the firmware, the icons turn white on the circle's green.
+        const bool on_result_color = layout == GrindScreenLayout::CIRCLE;
+        lv_obj_set_style_text_color(
+            status_icons[0], lv_color_hex(on_result_color ? THEME_COLOR_TEXT_PRIMARY : THEME_COLOR_ACCENT), 0);
+        lv_obj_set_style_text_color(
+            status_icons[1], lv_color_hex(on_result_color ? THEME_COLOR_TEXT_PRIMARY : THEME_COLOR_SUCCESS), 0);
         std::snprintf(name, sizeof(name), "finished-%s", layout_names[i]);
         ok &= save_screen(display, folder, name);
         screen->update_result_timer(nullptr);
     }
+    lv_obj_set_style_text_color(status_icons[0], lv_color_hex(THEME_COLOR_ACCENT), 0);
+    lv_obj_set_style_text_color(status_icons[1], lv_color_hex(THEME_COLOR_SUCCESS), 0);
 
     layout = GrindScreenLayout::MINIMAL_ARC;
     show_only(&arc_screen);

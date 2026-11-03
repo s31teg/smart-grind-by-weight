@@ -26,6 +26,10 @@ public:
     // Arc -> Chart -> Circle -> Arc, as when tapping the screen while grinding
     void cycle_layout();
     GrindScreenLayout get_layout() const { return current_layout; }
+    // True while the circle layout fills the display with its result colour.
+    bool shows_result_colors() const {
+        return current_layout == GrindScreenLayout::CIRCLE && circle_screen.shows_result_colors();
+    }
 
     // IGrindingScreen implementation - delegates to active screen
     void create() override;

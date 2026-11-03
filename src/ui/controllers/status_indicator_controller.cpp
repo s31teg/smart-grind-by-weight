@@ -79,8 +79,10 @@ void StatusIndicatorController::build() {
 
 void StatusIndicatorController::update() {
     const bool allowed = icons_allowed_on_current_screen();
-    if (allowed != icons_allowed_) {
+    const bool on_result_color = on_result_color_screen();
+    if (allowed != icons_allowed_ || on_result_color != on_result_color_) {
         icons_allowed_ = allowed;
+        on_result_color_ = on_result_color;
         // Reapply every icon for the new screen.
         last_ble_state_ = last_wifi_state_ = last_warning_state_ = last_firmware_update_state_ = -1;
     }
@@ -104,6 +106,19 @@ bool StatusIndicatorController::icons_allowed_on_current_screen() const {
     }
 }
 
+// The circle layout's finished screen is solid green (amber on failure),
+// which hides the green and orange icons.
+bool StatusIndicatorController::on_result_color_screen() const {
+    if (!ui_manager_ || !ui_manager_->state_machine) return false;
+    const UIState state = ui_manager_->state_machine->get_current_state();
+    return (state == UIState::GRIND_COMPLETE || state == UIState::GRIND_TIMEOUT) &&
+           ui_manager_->grinding_screen.shows_result_colors();
+}
+
+lv_color_t StatusIndicatorController::icon_color(uint32_t color) const {
+    return lv_color_hex(on_result_color_ ? THEME_COLOR_TEXT_PRIMARY : color);
+}
+
 void StatusIndicatorController::set_icon_visible(lv_obj_t* icon, bool visible) const {
     if (visible && icons_allowed_) {
         lv_obj_clear_flag(icon, LV_OBJ_FLAG_HIDDEN);
@@ -120,6 +135,7 @@ void StatusIndicatorController::update_firmware_update_icon() {
     if (state == last_firmware_update_state_) return;
     last_firmware_update_state_ = state;
     set_icon_visible(firmware_update_icon_, state != 0);
+    lv_obj_set_style_text_color(firmware_update_icon_, icon_color(THEME_COLOR_SUCCESS), 0);
 }
 
 void StatusIndicatorController::prompt_firmware_update() {
@@ -152,9 +168,7 @@ void StatusIndicatorController::update_ble_status_icon() {
     set_icon_visible(ble_status_icon_, state != 0);
     if (state != 0) {
         lv_obj_set_style_text_color(ble_status_icon_,
-                                    state == 2 ? lv_color_hex(THEME_COLOR_SUCCESS)
-                                               : lv_color_hex(THEME_COLOR_ACCENT),
-                                    0);
+                                    icon_color(state == 2 ? THEME_COLOR_SUCCESS : THEME_COLOR_ACCENT), 0);
     }
 }
 
@@ -170,9 +184,7 @@ void StatusIndicatorController::update_wifi_status_icon() {
     if (state == 0) return;
 
     lv_obj_set_style_text_color(wifi_status_icon_,
-                                state == 2 ? lv_color_hex(THEME_COLOR_SUCCESS)
-                                           : lv_color_hex(THEME_COLOR_TEXT_SECONDARY),
-                                0);
+                                icon_color(state == 2 ? THEME_COLOR_SUCCESS : THEME_COLOR_TEXT_SECONDARY), 0);
 }
 
 void StatusIndicatorController::update_warning_icon() {
@@ -192,6 +204,7 @@ void StatusIndicatorController::update_warning_icon() {
         if (state == last_warning_state_) return;
         last_warning_state_ = state;
         set_icon_visible(warning_icon_, state != 0);
+        lv_obj_set_style_text_color(warning_icon_, icon_color(THEME_COLOR_WARNING), 0);
     } else {
         if (last_warning_state_ == 0) return;
         last_warning_state_ = 0;

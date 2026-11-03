@@ -22,6 +22,8 @@ private:
     void update_warning_icon();
     void update_firmware_update_icon();
     bool icons_allowed_on_current_screen() const;
+    bool on_result_color_screen() const;
+    lv_color_t icon_color(uint32_t color) const;
     void set_icon_visible(lv_obj_t* icon, bool visible) const;
 
     UIManager* ui_manager_;
@@ -34,4 +36,5 @@ private:
     int8_t last_warning_state_ = -1;
     int8_t last_firmware_update_state_ = -1;
     bool icons_allowed_ = true;
+    bool on_result_color_ = false;
 };
