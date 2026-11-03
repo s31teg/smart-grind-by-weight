@@ -1,45 +1,27 @@
 # Smart Grind-by-Weight
 
-[![Latest release](https://img.shields.io/github/v/release/Clinteastman/smart-grind-by-weight?display_name=tag&logo=github)](https://github.com/Clinteastman/smart-grind-by-weight/releases/latest)
-[![Firmware](https://github.com/Clinteastman/smart-grind-by-weight/actions/workflows/firmware.yml/badge.svg)](https://github.com/Clinteastman/smart-grind-by-weight/actions/workflows/firmware.yml)
-[![Desktop simulator](https://github.com/Clinteastman/smart-grind-by-weight/actions/workflows/simulator.yml/badge.svg)](https://github.com/Clinteastman/smart-grind-by-weight/actions/workflows/simulator.yml)
-[![Web flasher](https://github.com/Clinteastman/smart-grind-by-weight/actions/workflows/deploy-web-flasher.yml/badge.svg)](https://github.com/Clinteastman/smart-grind-by-weight/actions/workflows/deploy-web-flasher.yml)
-[![Downloads](https://img.shields.io/github/downloads/Clinteastman/smart-grind-by-weight/total?logo=github&label=downloads)](https://github.com/Clinteastman/smart-grind-by-weight/releases)
 [![Hardware](https://img.shields.io/badge/hardware-Waveshare%20V1%20%7C%20V2-6f42c1)](docs/GRINDER_COMPATIBILITY.md)
+[![Desktop simulator](https://img.shields.io/badge/simulator-Windows%20%7C%20macOS%20%7C%20Linux-0a7ea4)](sim/README.md)
+[![Based on](https://img.shields.io/badge/based%20on-Clinteastman%2Fsmart--grind--by--weight-555)](https://github.com/Clinteastman/smart-grind-by-weight)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
-
-> [!TIP]
-> **Using Home Assistant?** Add automatic discovery, live local-push sensors,
-> grinder controls and firmware-update reporting with the companion
-> **[Smart Grind by Weight Home Assistant integration →](https://github.com/Clinteastman/smart-grind-home-assistant)**
 
 Turn a compatible coffee grinder into a precise, touch-controlled
 grind-by-weight system using a Waveshare ESP32-S3 AMOLED board and load cell.
 Smart Grind learns the grinder's live flow and stopping delay, switches the
 motor off before the target, then uses controlled pulses to finish the dose.
 
-> **Community-maintained fork.** This repository continues the
-> [original Smart Grind-by-Weight project](https://github.com/jaapp/smart-grind-by-weight)
-> with tested hardware support and new releases while upstream maintenance is
-> limited. The original project, author and community contributors remain
-> credited, and retained commits preserve their authorship.
+> **This is s31teg's fork** of the
+> [community-maintained Smart Grind-by-Weight](https://github.com/Clinteastman/smart-grind-by-weight),
+> which itself continues [Jaap Pieroen's original project](https://github.com/jaapp/smart-grind-by-weight).
+> It adds the display, Start on Cup and finished-screen work listed below, and
+> redrawn wiring diagrams for both board generations. Everything else matches
+> the upstream release line, and the original authors remain credited.
 
-**[Flash firmware](https://clinteastman.github.io/smart-grind-by-weight/)** ·
+**[What this fork adds](#what-this-fork-adds)** ·
+**[Wiring diagrams](#wiring-diagrams)** ·
+**[Installing this fork's firmware](#installing-this-forks-firmware)** ·
 **[Build & installation guide](docs/DOC.md#start-here)** ·
-**[What's new in v1.5.9](CHANGELOG.md#159---2026-09-06)** ·
 **[Troubleshooting](docs/TROUBLESHOOTING.md)**
-
-> [!TIP]
-> **Firmware installation stuck at 0%?** The v1.5.9 hotfix repairs a download
-> timing bug and adds clear update-failure feedback. Once it appears in
-> [GitHub Releases](https://github.com/Clinteastman/smart-grind-by-weight/releases),
-> download its matching V1 or V2 application `.bin` and use **System & updates →
-> Manual firmware file → Upload firmware** if your current automatic installer
-> fails. No USB connection or settings reset is needed. Read the
-> [hotfix notes](CHANGELOG.md#159---2026-09-06).
-
-See [release validation](docs/RELIABILITY_RELEASE.md) for the tested candidate
-and coverage limits. The release badge above identifies the latest published build.
 
 <table>
 <tr>
@@ -56,6 +38,118 @@ https://github.com/user-attachments/assets/e20ce3e2-417e-4a3b-bb48-05591fce9418
 </tr>
 </table>
 
+## What this fork adds
+
+Screens below are rendered from the production firmware's UI code by the
+[desktop simulator](sim/README.md).
+
+<table>
+<tr>
+<td align="center" width="25%"><img src="media/screens/grinding-arc.png" alt="Arc grinding screen at 11.6 g of 18 g" width="100%"><br><sub>Arc</sub></td>
+<td align="center" width="25%"><img src="media/screens/grinding-chart.png" alt="Chart grinding screen with live weight and flow" width="100%"><br><sub>Chart</sub></td>
+<td align="center" width="25%"><img src="media/screens/circle-grind.gif" alt="Circle grinding screen growing until the grind completes" width="100%"><br><sub>Circle (new)</sub></td>
+<td align="center" width="25%"><img src="media/screens/finished-circle.png" alt="Circle screen turned green when the grind finished" width="100%"><br><sub>Circle finished</sub></td>
+</tr>
+</table>
+
+**Circle grind screen.** A third grinding layout: a circle grows with the dose
+and the whole display turns green when the grind finishes, easy to read from
+across the kitchen. Choose it under **Menu → Grind Settings → Grind Screen**,
+or tap the grind screen to cycle Arc → Chart → Circle.
+
+<table>
+<tr>
+<td align="center" width="25%"><img src="media/screens/finished-arc.png" alt="Finished arc screen with a 0:42 timer under the weight" width="100%"><br><sub>Finished, timer counting</sub></td>
+<td align="center" width="25%"><img src="media/screens/finished-chart.png" alt="Finished chart screen with the timer in the chart corner" width="100%"><br><sub>Finished, chart layout</sub></td>
+<td align="center" width="25%"><img src="media/screens/portafilter-removed.png" alt="Stopped screen reading Portafilter removed" width="100%"><br><sub>Portafilter lifted</sub></td>
+<td align="center" width="25%"><img src="media/screens/scale-starting.png" alt="Ready screen showing SCALE STARTING under the target" width="100%"><br><sub>Scale starting</sub></td>
+</tr>
+</table>
+
+**Finished-screen timer.** After a grind the final weight stays on screen with
+a timer counting up underneath, so you can see how long the grounds have been
+waiting. Lifting the cup or portafilter stops the timer and starts the normal
+**Show for** countdown. The screen stays awake while the timer runs, for up to
+30 minutes.
+
+**Stop when the portafilter is lifted.** Lifting the portafilter mid-grind
+stops the motor in weight, time and manual modes, and the screen reads
+**STOPPED · Portafilter removed** instead of a cryptic error.
+
+**Scale starting.** For the first few seconds after power-on the profile pages
+show **SCALE STARTING** and the Grind button waits, instead of failing with
+"Could not start".
+
+**Start on Cup that waits for the cup to settle.** The grinder remembers the
+weight the scale last rested at and starts once the cup has come to rest at
+least the threshold heavier. A heavy portafilter with a threshold close to its
+own weight (for example 410 g against a 350 g threshold) no longer has to be
+lifted off and set down again, and knocks or sensor noise only delay the start.
+
+**Smoother V2 display.** V2 boards draw the next part of the screen while the
+previous part is still being sent to the panel, so menus and animations run
+faster. Redraws are aligned to the panel's even-row requirement, and the
+status icons no longer cover text or buttons.
+
+**Wi-Fi setup fixes.** The setup page shows the padlock for secured networks,
+iPhones no longer autocorrect the network name, and a failed join says why:
+network not found, password rejected, signal too weak and so on.
+
+**Developer tooling.** The desktop simulator runs on macOS and Linux as well as
+Windows, with layout checks that catch overlapping text before it reaches the
+grinder. BLE delta updates pick the archive built for the matching board.
+
+The full list is in the [changelog](CHANGELOG.md#unreleased).
+
+## Wiring diagrams
+
+Both board generations are redrawn from scratch, with every connection,
+the grinder plug pinout and the brown-out capacitor. Click a diagram for the
+full-size image; the editable SVG sources sit beside them in [`media/`](media/).
+
+<table>
+<tr>
+<td width="50%"><strong>V1 hardware</strong> (original CO5300 display)<br><a href="media/wiring_diagram_v1.png"><img src="media/wiring_diagram_v1.png" alt="Wiring diagram for V1 hardware" width="100%"></a></td>
+<td width="50%"><strong>V2 hardware</strong> (SH8601 display, may be marked Rev1.1)<br><a href="media/wiring_diagram_v2.png"><img src="media/wiring_diagram_v2.png" alt="Wiring diagram for V2 hardware" width="100%"></a></td>
+</tr>
+</table>
+
+> [!WARNING]
+> On V2 boards, never wire the motor to GPIO 18. It is the touchscreen's
+> interrupt line. Use GPIO 16 for the motor and GPIO 1 for HX711 SCK. Identify
+> the grinder wires by plug position, not colour, and confirm 5 V and GND with
+> a multimeter first. The [installation guide](docs/HARDWARE_INSTALLATION.md#installation-and-wiring)
+> has the full pin tables.
+
+## Installing this fork's firmware
+
+This fork does not publish releases, so build the firmware for your board and
+upload it to the grinder:
+
+```bash
+# V2 board (use --hardware v1 for V1)
+python3 tools/grinder.py build --hardware v2 --jobs 8
+
+# Upload over Bluetooth
+python3 tools/grinder.py upload
+```
+
+You can also upload the built `.bin` from the grinder's web page under
+**System & updates → Manual firmware file**. Settings are kept across firmware
+updates. See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for the PlatformIO setup and
+USB recovery.
+
+> [!IMPORTANT]
+> The grinder's one-click updater, the green update icon and the
+> [web flasher](https://clinteastman.github.io/smart-grind-by-weight/) all
+> install the **upstream** release. That replaces this fork's firmware and
+> removes the features above until you upload this fork's build again.
+
+> [!TIP]
+> **Using Home Assistant?** Add automatic discovery, live local-push sensors,
+> grinder controls and firmware-update reporting with the companion
+> **[Smart Grind by Weight Home Assistant integration →](https://github.com/Clinteastman/smart-grind-home-assistant)**
+
 ## Features
 
 - **Accurate grind-by-weight control** with predictive motor stopping,
@@ -68,8 +162,8 @@ https://github.com/user-attachments/assets/e20ce3e2-417e-4a3b-bb48-05591fce9418
   independent 30-second safety cutoff.
 - **Grind-by-time mode** for the original timed workflow, including pause and
   resume and operation without a load cell.
-- **Responsive AMOLED interface** with chart and arc views, faster partial
-  display updates and reliable short-swipe gestures.
+- **Responsive AMOLED interface** with arc, chart and circle views, faster
+  partial display updates and reliable short-swipe gestures.
 - **Adjustable coast compensation** from 70% to 150%, stored on the grinder;
   the neutral 100% default preserves the original behaviour.
 - **Automatic or manual motor-latency tuning** with a guarded 30–300 ms manual
@@ -153,12 +247,15 @@ for longer-term archives and recovery workflows.
    [Display stays black after flashing](docs/TROUBLESHOOTING.md#display-stays-black-after-flashing-waveshare-164-v2).
 4. **Flash the matching image.** Open the
    [Community Web Flasher](https://clinteastman.github.io/smart-grind-by-weight/)
-   in Chrome or Edge on desktop/Android and explicitly select V1 or V2. USB
-   recovery instructions and command-line alternatives are in the
+   in Chrome or Edge on desktop/Android and explicitly select V1 or V2. That
+   installs the upstream release; then
+   [upload this fork's build](#installing-this-forks-firmware) over Bluetooth
+   or Wi-Fi. USB recovery instructions and command-line alternatives are in the
    [development guide](docs/DEVELOPMENT.md).
 5. **Wire, assemble and calibrate.** Follow the ordered
    [build and installation checklist](docs/DOC.md#start-here) and the
-   [Eureka build video](https://youtu.be/-kfKjiwJsGM). On the verified V2
+   [Eureka build video](https://youtu.be/-kfKjiwJsGM), using the
+   [wiring diagram](#wiring-diagrams) for your board. On the verified V2
    installation, HX711 SCK is GPIO1 and the motor relay is GPIO16; GPIO18 is
    reserved by the touch controller.
 
@@ -226,10 +323,16 @@ The complete editable Fusion 360 design is included at
 Please report reproducible problems through
 [GitHub Issues](https://github.com/Clinteastman/smart-grind-by-weight/issues),
 including the board generation, firmware version and a diagnostic log where
-possible. Tested V1 hardware feedback is particularly useful.
+possible, and say if you are running this fork. Tested V1 hardware feedback is
+particularly useful.
 
 ## Credits
 
+- This fork is maintained by [s31teg](https://github.com/s31teg). Its changes
+  are also offered upstream as pull requests to
+  [Clinteastman/smart-grind-by-weight](https://github.com/Clinteastman/smart-grind-by-weight/pulls?q=author%3As31teg).
+- The community-maintained release line this fork builds on is maintained by
+  [Clinteastman](https://github.com/Clinteastman).
 - Smart Grind-by-Weight was originally created by
   [Jaap Pieroen (@jaapp)](https://github.com/jaapp). This fork retains Jaap's
   original commit history and remains licensed under GPLv3. The
