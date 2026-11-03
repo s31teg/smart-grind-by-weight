@@ -1,6 +1,7 @@
 #include <lvgl.h>
 
 #include "config/constants.h"
+#include "screenshot.h"
 #include "sim_platform.h"
 #include "ui/screens/grinding_screen_arc.h"
 #include "ui/screens/grinding_screen_chart.h"
@@ -299,6 +300,16 @@ bool has_arg(int argc, char** argv, const char* expected) {
     return false;
 }
 
+// The value after a flag, e.g. the folder in "--screenshots media/screens".
+const char* arg_value(int argc, char** argv, const char* expected) {
+    for (int i = 1; i + 1 < argc; ++i) {
+        if (std::strcmp(argv[i], expected) == 0) {
+            return argv[i + 1];
+        }
+    }
+    return nullptr;
+}
+
 // The "SCALE STARTING" line must sit between the profile target and the Grind
 // button, which is drawn over the bottom of the Ready screen area.
 bool check_scale_status_layout(lv_display_t* display) {
@@ -594,6 +605,118 @@ bool check_status_icon_layout(lv_display_t* display) {
     return overlaps == 0;
 }
 
+bool save_screen(lv_display_t* display, const char* folder, const char* name) {
+    lv_refr_now(display);
+    char path[512];
+    std::snprintf(path, sizeof(path), "%s/%s.bmp", folder, name);
+    const bool saved = sim_screenshot::save_bmp(lv_screen_active(), path);
+    std::printf("[screenshots] %s %s\n", path, saved ? "saved" : "FAILED");
+    return saved;
+}
+
+// Feeds the chart the mock grinder's weight and flow curve up to the given
+// weight, sampled at the chart's 50 ms interval. A settled grind also gets
+// the run-on after the motor stops.
+void fill_chart_until(float stop_weight_g, bool settled) {
+    constexpr uint32_t kSampleMs = 50;
+    constexpr uint32_t kSettleMs = 1500;
+    chart_screen.reset_chart_data();
+    float weight = 0.0f;
+    float flow = 0.0f;
+    uint32_t time_ms = 1;
+    while (weight < stop_weight_g) {
+        const float elapsed_s = time_ms / 1000.0f;
+        flow = std::min(1.75f, 0.25f + elapsed_s * 0.55f);
+        weight += flow * kSampleMs / 1000.0f;
+        chart_screen.add_chart_data_point(weight, flow, time_ms);
+        time_ms += kSampleMs;
+    }
+    if (!settled) return;
+    for (uint32_t settle_ms = 0; settle_ms < kSettleMs; settle_ms += kSampleMs) {
+        flow *= std::pow(0.12f, kSampleMs / 1000.0f);
+        chart_screen.add_chart_data_point(weight, flow, time_ms);
+        time_ms += kSampleMs;
+    }
+}
+
+void show_only(IGrindingScreen* active) {
+    ready_screen.hide();
+    for (IGrindingScreen* screen : grind_screens) {
+        if (screen != active) screen->hide();
+    }
+    active->show();
+}
+
+// Saves the screens shown in the documentation, with Bluetooth on and Wi-Fi
+// connected.
+bool save_documentation_screenshots(lv_display_t* display, const char* folder) {
+    create_status_icons();
+    lv_obj_set_style_text_color(status_icons[0], lv_color_hex(THEME_COLOR_ACCENT), 0);
+    lv_obj_set_style_text_color(status_icons[1], lv_color_hex(THEME_COLOR_SUCCESS), 0);
+    lv_obj_add_flag(status_icons[2], LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(status_icons[3], LV_OBJ_FLAG_HIDDEN);
+    bool ok = true;
+
+    const uint32_t double_tab = ReadyScreen::tab_for_profile_index(1);
+    lv_tabview_set_act(ready_screen.get_tabview(), double_tab, LV_ANIM_OFF);
+    ok &= save_screen(display, folder, "ready");
+    ready_screen.set_profile_scale_status("SCALE STARTING", THEME_COLOR_TEXT_SECONDARY, true);
+    ok &= save_screen(display, folder, "scale-starting");
+    ready_screen.set_profile_scale_status(nullptr, THEME_COLOR_TEXT_SECONDARY, false);
+
+    constexpr float kTarget = 18.0f;
+    constexpr float kGrindingWeight = 11.6f;
+    constexpr float kFinalWeight = 18.02f;
+    const char* const layout_names[] = {"arc", "chart", "circle"};
+    char name[64];
+    fill_chart_until(kGrindingWeight, false);
+    for (int i = 0; i < 3; ++i) {
+        IGrindingScreen* screen = grind_screens[i];
+        layout = static_cast<GrindScreenLayout>(i);
+        show_only(screen);
+        screen->update_profile_name("DOUBLE");
+        screen->update_target_weight(kTarget);
+        screen->set_outcome(GrindScreenOutcome::IN_PROGRESS);
+        screen->update_current_weight(kGrindingWeight);
+        screen->update_progress(static_cast<int>(kGrindingWeight / kTarget * 100.0f));
+        grind_completed = false;
+        set_grind_button(LV_SYMBOL_STOP, THEME_COLOR_PRIMARY);
+        update_grind_button_outline();
+        std::snprintf(name, sizeof(name), "grinding-%s", layout_names[i]);
+        ok &= save_screen(display, folder, name);
+    }
+
+    fill_chart_until(kFinalWeight - 0.4f, true);
+    for (int i = 0; i < 3; ++i) {
+        IGrindingScreen* screen = grind_screens[i];
+        layout = static_cast<GrindScreenLayout>(i);
+        show_only(screen);
+        screen->update_current_weight(kFinalWeight);
+        screen->update_progress(100);
+        screen->set_outcome(GrindScreenOutcome::COMPLETE);
+        screen->update_result_timer("0:42");
+        grind_completed = true;
+        set_grind_button(LV_SYMBOL_OK, THEME_COLOR_SUCCESS);
+        update_grind_button_outline();
+        std::snprintf(name, sizeof(name), "finished-%s", layout_names[i]);
+        ok &= save_screen(display, folder, name);
+        screen->update_result_timer(nullptr);
+    }
+
+    layout = GrindScreenLayout::MINIMAL_ARC;
+    show_only(&arc_screen);
+    arc_screen.update_profile_name("STOPPED");
+    arc_screen.update_target_weight_text("Portafilter removed");
+    arc_screen.update_current_weight(9.4f);
+    arc_screen.update_progress(52);
+    arc_screen.set_outcome(GrindScreenOutcome::FAILED);
+    grind_completed = false;
+    set_grind_button(LV_SYMBOL_OK, THEME_COLOR_SUCCESS);
+    update_grind_button_outline();
+    ok &= save_screen(display, folder, "portafilter-removed");
+    return ok;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -605,6 +728,7 @@ int main(int argc, char** argv) {
     const bool scale_status_check = has_arg(argc, argv, "--scale-status-check");
     const bool result_timer_check = has_arg(argc, argv, "--result-timer-check");
     const bool status_icon_check = has_arg(argc, argv, "--status-icon-check");
+    const char* screenshot_folder = arg_value(argc, argv, "--screenshots");
 
     if (smoke_test) {
         std::puts("[smoke] starting simulator");
@@ -616,7 +740,7 @@ int main(int argc, char** argv) {
 
     const bool automated_run =
         smoke_test || benchmark || swipe_benchmark || manual_smoke || circle_smoke ||
-        scale_status_check || result_timer_check || status_icon_check;
+        scale_status_check || result_timer_check || status_icon_check || screenshot_folder;
     lv_display_t* display =
         sim_platform::create_display(kDisplayWidth, kDisplayHeight, automated_run);
     if (!display) {
@@ -657,6 +781,10 @@ int main(int argc, char** argv) {
 
     if (status_icon_check) {
         return check_status_icon_layout(display) ? 0 : 10;
+    }
+
+    if (screenshot_folder) {
+        return save_documentation_screenshots(display, screenshot_folder) ? 0 : 11;
     }
 
     const uint32_t smoke_started_ms = now_ms();

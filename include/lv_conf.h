@@ -1025,7 +1025,12 @@
 /* Documentation for several of the below items can be found here: https://docs.lvgl.io/master/details/auxiliary-modules/index.html . */
 
 /** 1: Enable API to take snapshot for object */
-#define LV_USE_SNAPSHOT 0
+#ifdef SMART_GRIND_SIM
+    /* The desktop simulator saves screenshots for the documentation. */
+    #define LV_USE_SNAPSHOT 1
+#else
+    #define LV_USE_SNAPSHOT 0
+#endif
 
 /** 1: Enable system monitor component */
 #define LV_USE_SYSMON   0

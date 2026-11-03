@@ -40,6 +40,7 @@ endif()
 
 add_executable(smart-grind-sim
     main.cpp
+    screenshot.cpp
     ${SIM_PLATFORM_SOURCE}
     grind_mode_format.cpp
     "${PROJECT_ROOT}/src/ui/ui_helpers.cpp"

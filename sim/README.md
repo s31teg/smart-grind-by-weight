@@ -97,6 +97,19 @@ gate is therefore:
 3. Build and run this simulator smoke test against the shared production UI
    source.
 
+## Documentation screenshots
+
+The screenshots in `media/screens/` come from the production screens. To
+regenerate them on macOS or Linux after `sim/run.sh` has built the simulator:
+
+```bash
+mkdir -p /tmp/smart-grind-shots
+sim/build/smart-grind-sim --screenshots /tmp/smart-grind-shots
+```
+
+The simulator saves each screen as a 280 x 456 BMP file and exits; convert them
+to PNG (for example with `sips -s format png`) before adding them to `media/`.
+
 ## Scope and hardware boundary
 
 The simulator is suitable for UI layout, interaction flows, deterministic grind
