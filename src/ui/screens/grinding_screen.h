@@ -42,6 +42,8 @@ public:
     lv_obj_t* get_screen() const override;
     void add_chart_data_point(float current_weight, float flow_rate, uint32_t current_time_ms) override;
     void set_outcome(GrindScreenOutcome outcome) override;
+    void update_result_timer(const char* text) override;
+    lv_obj_t* get_result_timer_label() const override;
     void reset_chart_data();
     void set_mode(GrindMode mode);
     void set_chart_time_prediction(uint32_t predicted_time_ms);

@@ -5,6 +5,8 @@ class UIManager;
 
 // Shows Bluetooth and Wi-Fi connection status icons with color coding
 // Shows diagnostic warning icon when issues detected
+// Only on screens laid out around them (Ready, grinding and results, update
+// progress); menus, editors and pop-ups use the top edge for their own titles.
 
 class StatusIndicatorController {
 public:
@@ -19,6 +21,8 @@ private:
     void update_wifi_status_icon();
     void update_warning_icon();
     void update_firmware_update_icon();
+    bool icons_allowed_on_current_screen() const;
+    void set_icon_visible(lv_obj_t* icon, bool visible) const;
 
     UIManager* ui_manager_;
     lv_obj_t* ble_status_icon_ = nullptr;
@@ -29,4 +33,5 @@ private:
     int8_t last_wifi_state_ = -1;
     int8_t last_warning_state_ = -1;
     int8_t last_firmware_update_state_ = -1;
+    bool icons_allowed_ = true;
 };

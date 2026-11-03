@@ -51,7 +51,7 @@ Access **Menu → Grind Settings** to configure:
 - **Time Mode**: Directly toggle between Weight and Time modes regardless of swipe setting
 - **Grind Screen**: Choose the layout shown while grinding: Arc (default), Chart or Circle
 - **Hold**: Keep the final weight on the finished screen after the cup is lifted (default: on). Turn it off to show the live scale reading instead
-- **Show for**: How long the finished screen stays before returning to Ready: 15 s, 30 s, 1 min (default), 2 min or 5 min. An error screen always stays for 1 minute
+- **Show for**: How long the finished screen stays after you lift the cup before returning to Ready: 15 s, 30 s, 1 min (default), 2 min or 5 min. While the cup is still on the scale the finished screen stays up, for at most 30 minutes. An error screen always stays for 1 minute
 - **Start on Cup**: Start the active profile automatically once a cup or portafilter at least the configured cup threshold (50 g by default) heavier than the empty scale has come to rest on it
 - **Return on Removal**: Leave the completion screen as soon as that cup weight drops back off the scale
 - **Motor Latency** *(Advanced)*: View or manually adjust the minimum reliable
@@ -81,6 +81,9 @@ These steps describe the default grind-by-weight workflow:
 4. Press the GRIND button – the scale will tare automatically
 5. The system grinds to the precise target weight using the predictive algorithm
 6. GRIND COMPLETE shows the final settled weight in grams (with statistics), which stays on screen after you lift the cup
+7. Under the weight, a timer counts up from the moment the grind finished, so you can see how long the grounds have been waiting. It stops when you lift the cup. Until then the finished screen stays up and the display stays bright, for at most 30 minutes. In time mode, a PULSE restarts the timer
+
+If the portafilter is lifted off the scale while the grinder runs, the grind stops and the screen shows **STOPPED** with "Portafilter removed". This works in weight, time and manual modes. A manual grind is only watched when the scale was not tared with the portafilter on, because the grinder then cannot tell how heavy it is. A time grind that you have paused can be lifted, for example to distribute the grounds; the check starts again when you resume.
 
 > Optional automation (Menu → Grind Settings): enable auto-start and set the cup threshold below the empty cup or portafilter weight. The grinder remembers the weight the scale last rested at and starts as soon as the cup has come to rest at least that much heavier, however long positioning it takes. Auto-return then jumps back to Ready whenever that cup is lifted off again.
 
@@ -214,7 +217,7 @@ Both automation settings work from the averaged scale reading, so no extra calib
 
 ## Bluetooth connectivity
 
-Bluetooth can be configured in **Menu → Bluetooth** with optional auto-startup (5-minute timer) or manual control (30-minute timer when manually enabled). The blue Bluetooth symbol in the top-right corner indicates when active. Bluetooth enables wireless firmware updates via BLE OTA, legacy grind-data export and device management. Grind session logging is configurable in **Menu → Data → Logging** and is enabled by default so the local web History page works immediately; disable it if you do not want sessions written to flash.
+Bluetooth can be configured in **Menu → Bluetooth** with optional auto-startup (5-minute timer) or manual control (30-minute timer when manually enabled). The blue Bluetooth symbol in the top-right corner indicates when active. The status icons appear on the main screen and while grinding; menus, editors and pop-ups hide them so their titles stay readable. Bluetooth enables wireless firmware updates via BLE OTA, legacy grind-data export and device management. Grind session logging is configurable in **Menu → Data → Logging** and is enabled by default so the local web History page works immediately; disable it if you do not want sessions written to flash.
 
 ---
 

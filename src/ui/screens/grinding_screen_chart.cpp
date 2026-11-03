@@ -13,13 +13,17 @@ void GrindingScreenChart::create() {
     lv_obj_set_style_bg_opa(screen, LV_OPA_TRANSP, 0); // Keep transparent
     lv_obj_set_style_border_width(screen, 0, 0);
     lv_obj_set_style_pad_all(screen, 0, 0);
+    // Below the status icons, so a two-line readout (time mode, or an error
+    // message) never pushes the profile name up under them.
+    lv_obj_set_style_pad_top(screen, THEME_STATUS_BAR_HEIGHT_PX, 0);
+    lv_obj_clear_flag(screen, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_add_flag(screen, LV_OBJ_FLAG_CLICKABLE); // Make the parent screen container clickable
 
-    // Use flex layout for centering
+    // Column from the top: profile, chart, weight readout
     lv_obj_set_layout(screen, LV_LAYOUT_FLEX);
     lv_obj_set_flex_flow(screen, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_flex_align(screen, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-    lv_obj_set_style_pad_gap(screen, 15, 0);
+    lv_obj_set_flex_align(screen, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_gap(screen, 10, 0);
 
     // Profile name label
     profile_label = lv_label_create(screen);
@@ -110,6 +114,15 @@ void GrindingScreenChart::create() {
     std::snprintf(displayed_secondary_text, sizeof(displayed_secondary_text), " / 18.0g");
     
     lv_spangroup_refresh(weight_spangroup);
+
+    // Result timer in the chart's top-left corner, which the weight curve
+    // (rising from zero) leaves empty; the layout does not move when it shows.
+    result_timer_label = lv_label_create(chart);
+    lv_label_set_text(result_timer_label, "");
+    lv_obj_set_style_text_font(result_timer_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(result_timer_label, lv_color_hex(THEME_COLOR_ACCENT), 0);
+    lv_obj_align(result_timer_label, LV_ALIGN_TOP_LEFT, 8, 6);
+    lv_obj_add_flag(result_timer_label, LV_OBJ_FLAG_HIDDEN);
     
     // MODIFIED: Ensure all child widgets pass click events to the parent screen
     for (uint32_t i = 0; i < lv_obj_get_child_cnt(screen); i++) {
@@ -295,6 +308,10 @@ void GrindingScreenChart::set_time_mode(bool enabled) {
         // Revert to weight display formatting using the last known target weight
         update_target_weight(target_weight_value);
     }
+}
+
+void GrindingScreenChart::update_result_timer(const char* text) {
+    set_result_timer_label(result_timer_label, text);
 }
 
 void GrindingScreenChart::update_chart_point_configuration() {

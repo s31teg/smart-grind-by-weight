@@ -39,6 +39,13 @@
 // Progress and feedback elements
 #define THEME_PROGRESS_ARC_DIAMETER_PX 200                                    // Progress arc diameter
 
+// Status icons (Bluetooth, Wi-Fi, warning, update) along the top right. Screens
+// that show them keep text and buttons below THEME_STATUS_BAR_HEIGHT_PX.
+#define THEME_STATUS_ICON_TOP_PX 10                                           // Icon row distance from the top edge
+#define THEME_STATUS_ICON_RIGHT_PX 10                                         // Rightmost icon distance from the right edge
+#define THEME_STATUS_ICON_SPACING_PX 35                                       // Distance between neighbouring icons
+#define THEME_STATUS_BAR_HEIGHT_PX 44                                         // Icon row height plus a gap below it
+
 // Circle grinding screen: a light circle grows with progress until it covers the display
 #define THEME_COLOR_GRIND_CIRCLE 0xD9D9D9                                     // Circle fill while grinding (light grey)
 #define THEME_COLOR_GRIND_CIRCLE_TEXT 0x141414                                // Weight text on the light circle

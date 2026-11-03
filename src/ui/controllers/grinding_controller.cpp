@@ -133,6 +133,9 @@ void GrindingUIController::on_state_changed(UIState new_state) {
         lv_timer_del(grind_complete_timer_);
         grind_complete_timer_ = nullptr;
     }
+    if (new_state != UIState::GRIND_COMPLETE) {
+        stop_result_timer();
+    }
     if (new_state != UIState::GRIND_TIMEOUT && grind_timeout_timer_) {
         lv_timer_del(grind_timeout_timer_);
         grind_timeout_timer_ = nullptr;
@@ -175,6 +178,7 @@ void GrindingUIController::update(UIState current_state) {
 
     switch (current_state) {
         case UIState::GRIND_COMPLETE:
+            update_result_timer();
             show_result_weight();
             ui_manager_->grinding_screen.update_progress(final_grind_progress_);
             break;
@@ -228,6 +232,7 @@ void GrindingUIController::handle_grind_button() {
 
         LOG_BLE("[%lums GRIND_START] About to call start_grind()\n", millis());
         error_message_[0] = '\0';
+        error_title_[0] = '\0';
         error_grind_weight_ = 0.0f;
         error_grind_progress_ = 0;
 
@@ -598,7 +603,14 @@ void GrindingUIController::handle_grind_event(const GrindEventData& event_data) 
                     final_grind_weight_, final_grind_progress_);
             chart_updates_enabled_ = false;
             ui_manager_->switch_to_state(UIState::GRIND_COMPLETE);
-            start_grind_complete_timer();
+            // The screen now stays while the cup is on the scale; the Show
+            // for countdown starts once it is lifted. A time-mode pulse adds
+            // fresh grounds, so it restarts the count.
+            if (grind_complete_timer_) {
+                lv_timer_del(grind_complete_timer_);
+                grind_complete_timer_ = nullptr;
+            }
+            start_result_timer();
             break;
         }
         case UIGrindEvent::TIMEOUT: {
@@ -609,6 +621,8 @@ void GrindingUIController::handle_grind_event(const GrindEventData& event_data) 
             const char* message = event_data.error_message[0] ? event_data.error_message : "Error";
             std::strncpy(error_message_, message, sizeof(error_message_) - 1);
             error_message_[sizeof(error_message_) - 1] = '\0';
+            std::strncpy(error_title_, event_data.error_title, sizeof(error_title_) - 1);
+            error_title_[sizeof(error_title_) - 1] = '\0';
             LOG_BLE("GRIND ERROR - %s, Weight: %.2fg (Progress: %d%%)\n",
                     error_message_, error_grind_weight_, error_grind_progress_);
             chart_updates_enabled_ = false;
@@ -739,7 +753,7 @@ void GrindingUIController::enter_grind_timeout_state() {
         lv_obj_clear_flag(grind_button_, LV_OBJ_FLAG_HIDDEN);
     }
     ui_manager_->grinding_screen.set_mode(ui_manager_->current_mode);
-    ui_manager_->grinding_screen.update_profile_name("ERROR");
+    ui_manager_->grinding_screen.update_profile_name(error_title_[0] ? error_title_ : "ERROR");
     char error_display[64];
     const char* message = error_message_[0] ? error_message_ : "Error";
     std::snprintf(error_display, sizeof(error_display), "%s", message);
@@ -787,6 +801,66 @@ void GrindingUIController::show_result_weight() {
         return;
     }
     ui_manager_->grinding_screen.update_current_weight(final_grind_weight_);
+}
+
+void GrindingUIController::start_result_timer() {
+    result_timer_.start(millis());
+    shown_result_timer_seconds_ = UINT32_MAX;
+    show_result_timer_text();
+}
+
+// Runs every UI cycle on the finished screen. Without a working scale there
+// is no way to see the cup lifted, so the screen falls back to the Show for
+// countdown straight away.
+void GrindingUIController::update_result_timer() {
+    if (!result_timer_.running()) return;
+
+    WeightSensor* sensor = ui_manager_->hardware_manager->get_weight_sensor();
+    const bool scale_usable = sensor && sensor->has_recent_sample() && !sensor->has_hardware_fault();
+    if (!scale_usable) {
+        stop_result_timer();
+        start_grind_complete_timer();
+        return;
+    }
+
+    const uint32_t now = millis();
+    const bool cup_present = cup_on_scale(sensor->get_weight_low_latency(), SYS_CUP_REMOVED_THRESHOLD_G);
+    switch (result_timer_.update(now, cup_present, SYS_RESULT_TIMER_LIMIT_MS)) {
+        case ResultTimerEvent::CUP_REMOVED:
+            LOG_BLE("[RESULT] Cup lifted after %lus\n",
+                    static_cast<unsigned long>(result_timer_.elapsed_ms(now) / 1000U));
+            start_grind_complete_timer();
+            break;
+        case ResultTimerEvent::LIMIT_REACHED:
+            LOG_BLE("[RESULT] Cup left on for the result timer limit; returning to Ready\n");
+            // Fallback in case the controller cannot leave yet; leaving the
+            // finished screen cancels it.
+            start_grind_complete_timer();
+            if (ui_manager_->grind_controller) {
+                ui_manager_->grind_controller->return_to_idle();
+            }
+            return;
+        case ResultTimerEvent::NONE:
+            break;
+    }
+    show_result_timer_text();
+}
+
+void GrindingUIController::stop_result_timer() {
+    result_timer_.stop(millis());
+    shown_result_timer_seconds_ = UINT32_MAX;
+    ui_manager_->grinding_screen.update_result_timer(nullptr);
+}
+
+void GrindingUIController::show_result_timer_text() {
+    const uint32_t elapsed_ms = result_timer_.elapsed_ms(millis());
+    const uint32_t seconds = elapsed_ms / 1000U;
+    if (seconds == shown_result_timer_seconds_) return;
+    shown_result_timer_seconds_ = seconds;
+
+    char text[12];
+    format_result_timer(text, sizeof(text), elapsed_ms);
+    ui_manager_->grinding_screen.update_result_timer(text);
 }
 
 void GrindingUIController::start_grind_complete_timer() {

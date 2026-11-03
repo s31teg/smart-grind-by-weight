@@ -179,6 +179,10 @@ void ReadyScreen::create_wifi_page(lv_obj_t* parent) {
     lv_obj_set_flex_flow(parent, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(parent, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_all(parent, 4, 0);
+    // Clear of the status icons above and the Grind button below, even with
+    // the setup QR code and a join-failure message.
+    lv_obj_set_style_pad_top(parent, THEME_STATUS_BAR_HEIGHT_PX, 0);
+    lv_obj_set_style_pad_bottom(parent, 24, 0);
     lv_obj_set_style_pad_gap(parent, 5, 0);
     lv_obj_clear_flag(parent, LV_OBJ_FLAG_SCROLLABLE);
 
@@ -188,7 +192,7 @@ void ReadyScreen::create_wifi_page(lv_obj_t* parent) {
     lv_obj_set_style_text_align(wifi_status_label, LV_TEXT_ALIGN_CENTER, 0);
 
     wifi_qr = lv_qrcode_create(parent);
-    lv_qrcode_set_size(wifi_qr, 170);
+    lv_qrcode_set_size(wifi_qr, 150);
     lv_qrcode_set_dark_color(wifi_qr, lv_color_hex(0x000000));
     lv_qrcode_set_light_color(wifi_qr, lv_color_hex(0xFFFFFF));
     lv_qrcode_set_quiet_zone(wifi_qr, true);

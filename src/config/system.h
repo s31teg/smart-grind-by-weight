@@ -71,6 +71,13 @@
 // Ready screen reports the scale as unavailable instead of still starting.
 #define SYS_SCALE_STARTUP_TIMEOUT_MS 20000
 
+// Finished screen: a cup reading at or below this counts as lifted off. It
+// ends the result timer and triggers Return on Removal.
+#define SYS_CUP_REMOVED_THRESHOLD_G 2.0f
+// The result timer keeps the finished screen up, and the display awake, for
+// at most this long while the cup stays on the scale.
+#define SYS_RESULT_TIMER_LIMIT_MS (30UL * 60UL * 1000UL)
+
 //------------------------------------------------------------------------------
 // JOG ACCELERATION CONFIGURATION
 //------------------------------------------------------------------------------

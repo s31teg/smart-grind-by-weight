@@ -267,16 +267,17 @@ If you want to try a less aggressive approach first:
 
 ## Unexpected Net Weight Error
 
-**Applies to:** A weight grind stopping after a brief negative scale reading
-even though the cup or portafilter is still in place.
+**Applies to:** A grind stopping with **STOPPED** and "Portafilter removed"
+(older firmware: "Err: neg wt") even though the cup or portafilter is still in
+place.
 
-Current firmware records the vessel weight immediately before tare. It only
-treats a negative reading as vessel removal when the reading approaches that
-full pre-tare weight and persists across several samples. Smaller isolated
-negative spikes are ignored.
+The firmware records the vessel weight immediately before the grind starts. It
+only treats a drop as removal when the reading falls by about 90% of that
+vessel weight and stays there across several samples, so pushing a portafilter
+up in its holder or a brief negative spike does not stop the grind.
 
 If the error still occurs, download the diagnostic log from the grinder web UI
-and include the pre-tare reference, removal threshold and reported weight in a
+and include the vessel reference, removal threshold and reported weight in a
 GitHub issue.
 
 ---

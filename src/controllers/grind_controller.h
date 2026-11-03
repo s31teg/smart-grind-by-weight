@@ -151,6 +151,7 @@ private:
     // Flag to prevent repeated flash operations for terminal phases (COMPLETED/TIMEOUT)
     bool session_end_flash_queued = false;
     char last_error_message[32];
+    char last_error_title[16];
 
     GrindSessionDescriptor session_descriptor;
     GrindStrategyContext strategy_context;
@@ -308,5 +309,7 @@ private:
     GrindPhase get_timeout_phase() const { return timeout_phase; }
     const char* get_phase_name(GrindPhase p = static_cast<GrindPhase>(-1)) const;
 
-    void set_error_message(const char* message);
+    // `title` replaces the "ERROR" heading on the error screen.
+    void set_error_message(const char* message, const char* title = nullptr);
+    void queue_manual_runtime(uint32_t now_ms);
 };

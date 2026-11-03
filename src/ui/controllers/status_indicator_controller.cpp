@@ -24,7 +24,8 @@ void StatusIndicatorController::build() {
     lv_label_set_text(ble_status_icon_, LV_SYMBOL_BLUETOOTH);
     lv_obj_set_style_text_font(ble_status_icon_, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(ble_status_icon_, lv_color_hex(THEME_COLOR_ACCENT), 0);
-    lv_obj_align(ble_status_icon_, LV_ALIGN_TOP_RIGHT, -10, 10);
+    lv_obj_align(ble_status_icon_, LV_ALIGN_TOP_RIGHT,
+                 -(THEME_STATUS_ICON_RIGHT_PX + 0 * THEME_STATUS_ICON_SPACING_PX), THEME_STATUS_ICON_TOP_PX);
     lv_obj_add_flag(ble_status_icon_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(ble_status_icon_, LV_OBJ_FLAG_CLICKABLE);
 
@@ -34,7 +35,8 @@ void StatusIndicatorController::build() {
     lv_label_set_text(wifi_status_icon_, LV_SYMBOL_WIFI);
     lv_obj_set_style_text_font(wifi_status_icon_, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(wifi_status_icon_, lv_color_hex(THEME_COLOR_TEXT_SECONDARY), 0);
-    lv_obj_align(wifi_status_icon_, LV_ALIGN_TOP_RIGHT, -45, 10);
+    lv_obj_align(wifi_status_icon_, LV_ALIGN_TOP_RIGHT,
+                 -(THEME_STATUS_ICON_RIGHT_PX + 1 * THEME_STATUS_ICON_SPACING_PX), THEME_STATUS_ICON_TOP_PX);
     lv_obj_add_flag(wifi_status_icon_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(wifi_status_icon_, LV_OBJ_FLAG_CLICKABLE);
 
@@ -43,7 +45,8 @@ void StatusIndicatorController::build() {
     lv_label_set_text(warning_icon_, LV_SYMBOL_WARNING);
     lv_obj_set_style_text_font(warning_icon_, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(warning_icon_, lv_color_hex(THEME_COLOR_WARNING), 0);
-    lv_obj_align(warning_icon_, LV_ALIGN_TOP_RIGHT, -80, 10);
+    lv_obj_align(warning_icon_, LV_ALIGN_TOP_RIGHT,
+                 -(THEME_STATUS_ICON_RIGHT_PX + 2 * THEME_STATUS_ICON_SPACING_PX), THEME_STATUS_ICON_TOP_PX);
     lv_obj_add_flag(warning_icon_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_clear_flag(warning_icon_, LV_OBJ_FLAG_CLICKABLE);
 
@@ -54,7 +57,8 @@ void StatusIndicatorController::build() {
     lv_label_set_text(firmware_update_icon_, LV_SYMBOL_REFRESH);
     lv_obj_set_style_text_font(firmware_update_icon_, &lv_font_montserrat_24, 0);
     lv_obj_set_style_text_color(firmware_update_icon_, lv_color_hex(THEME_COLOR_SUCCESS), 0);
-    lv_obj_align(firmware_update_icon_, LV_ALIGN_TOP_RIGHT, -115, 10);
+    lv_obj_align(firmware_update_icon_, LV_ALIGN_TOP_RIGHT,
+                 -(THEME_STATUS_ICON_RIGHT_PX + 3 * THEME_STATUS_ICON_SPACING_PX), THEME_STATUS_ICON_TOP_PX);
     lv_obj_add_flag(firmware_update_icon_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(firmware_update_icon_, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_ext_click_area(firmware_update_icon_, 12);
@@ -74,10 +78,38 @@ void StatusIndicatorController::build() {
 }
 
 void StatusIndicatorController::update() {
+    const bool allowed = icons_allowed_on_current_screen();
+    if (allowed != icons_allowed_) {
+        icons_allowed_ = allowed;
+        // Reapply every icon for the new screen.
+        last_ble_state_ = last_wifi_state_ = last_warning_state_ = last_firmware_update_state_ = -1;
+    }
     update_ble_status_icon();
     update_wifi_status_icon();
     update_warning_icon();
     update_firmware_update_icon();
+}
+
+bool StatusIndicatorController::icons_allowed_on_current_screen() const {
+    if (!ui_manager_ || !ui_manager_->state_machine) return true;
+    switch (ui_manager_->state_machine->get_current_state()) {
+        case UIState::READY:
+        case UIState::GRINDING:
+        case UIState::GRIND_COMPLETE:
+        case UIState::GRIND_TIMEOUT:
+        case UIState::OTA_UPDATE:
+            return true;
+        default:
+            return false;
+    }
+}
+
+void StatusIndicatorController::set_icon_visible(lv_obj_t* icon, bool visible) const {
+    if (visible && icons_allowed_) {
+        lv_obj_clear_flag(icon, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(icon, LV_OBJ_FLAG_HIDDEN);
+    }
 }
 
 void StatusIndicatorController::update_firmware_update_icon() {
@@ -87,11 +119,7 @@ void StatusIndicatorController::update_firmware_update_icon() {
     const int8_t state = device_web_server.firmware_update_available() && grinder_idle ? 1 : 0;
     if (state == last_firmware_update_state_) return;
     last_firmware_update_state_ = state;
-    if (state != 0) {
-        lv_obj_clear_flag(firmware_update_icon_, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_add_flag(firmware_update_icon_, LV_OBJ_FLAG_HIDDEN);
-    }
+    set_icon_visible(firmware_update_icon_, state != 0);
 }
 
 void StatusIndicatorController::prompt_firmware_update() {
@@ -121,14 +149,12 @@ void StatusIndicatorController::update_ble_status_icon() {
                              : bluetooth->is_connected() ? 2 : 1;
     if (state == last_ble_state_) return;
     last_ble_state_ = state;
+    set_icon_visible(ble_status_icon_, state != 0);
     if (state != 0) {
-        lv_obj_clear_flag(ble_status_icon_, LV_OBJ_FLAG_HIDDEN);
         lv_obj_set_style_text_color(ble_status_icon_,
                                     state == 2 ? lv_color_hex(THEME_COLOR_SUCCESS)
                                                : lv_color_hex(THEME_COLOR_ACCENT),
                                     0);
-    } else {
-        lv_obj_add_flag(ble_status_icon_, LV_OBJ_FLAG_HIDDEN);
     }
 }
 
@@ -140,12 +166,9 @@ void StatusIndicatorController::update_wifi_status_icon() {
                              : network_manager.is_connected() ? 2 : 1;
     if (state == last_wifi_state_) return;
     last_wifi_state_ = state;
-    if (state == 0) {
-        lv_obj_add_flag(wifi_status_icon_, LV_OBJ_FLAG_HIDDEN);
-        return;
-    }
+    set_icon_visible(wifi_status_icon_, state != 0);
+    if (state == 0) return;
 
-    lv_obj_clear_flag(wifi_status_icon_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_set_style_text_color(wifi_status_icon_,
                                 state == 2 ? lv_color_hex(THEME_COLOR_SUCCESS)
                                            : lv_color_hex(THEME_COLOR_TEXT_SECONDARY),
@@ -168,11 +191,7 @@ void StatusIndicatorController::update_warning_icon() {
         const int8_t state = diagnostic != DiagnosticCode::NONE ? 1 : 0;
         if (state == last_warning_state_) return;
         last_warning_state_ = state;
-        if (state != 0) {
-            lv_obj_clear_flag(warning_icon_, LV_OBJ_FLAG_HIDDEN);
-        } else {
-            lv_obj_add_flag(warning_icon_, LV_OBJ_FLAG_HIDDEN);
-        }
+        set_icon_visible(warning_icon_, state != 0);
     } else {
         if (last_warning_state_ == 0) return;
         last_warning_state_ = 0;

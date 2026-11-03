@@ -1,5 +1,6 @@
 #pragma once
 #include <lvgl.h>
+#include "../../system/result_timer.h"
 
 class UIManager;
 enum class UIState;
@@ -32,6 +33,9 @@ public:
     void handle_grind_event(const GrindEventData& event_data);
     static void dispatch_event(const GrindEventData& event_data);
 
+    // True while the finished screen counts up with the cup still on.
+    bool is_result_timer_running() const { return result_timer_.running(); }
+
 private:
     void enter_ready_state();
     void enter_edit_state();
@@ -41,6 +45,10 @@ private:
     void enter_menu_state();
 
     void show_result_weight();
+    void start_result_timer();
+    void update_result_timer();
+    void stop_result_timer();
+    void show_result_timer_text();
     void start_grind_complete_timer();
     void start_grind_timeout_timer();
     void cancel_timers();
@@ -63,6 +71,11 @@ private:
     float error_grind_weight_ = 0.0f;
     int error_grind_progress_ = 0;
     char error_message_[32] = {0};
+    char error_title_[16] = {0};
+
+    // Count-up on the finished screen until the cup is lifted
+    ResultTimer result_timer_;
+    uint32_t shown_result_timer_seconds_ = UINT32_MAX;
 
     // Finished screen settings
     bool hold_final_weight_;

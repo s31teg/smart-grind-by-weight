@@ -8,6 +8,7 @@ private:
     lv_obj_t* screen;
     lv_obj_t* profile_label;
     lv_obj_t* weight_spangroup;
+    lv_obj_t* result_timer_label;
     lv_obj_t* chart;
     lv_chart_series_t* weight_series;
     lv_chart_series_t* flow_rate_series;
@@ -50,6 +51,8 @@ public:
     void set_chart_time_prediction(uint32_t predicted_time_ms);
     void reset_chart_data();
     void set_time_mode(bool enabled);
+    void update_result_timer(const char* text) override;
+    lv_obj_t* get_result_timer_label() const override { return result_timer_label; }
 
     bool is_visible() const override { return visible; }
     lv_obj_t* get_screen() const override { return screen; }

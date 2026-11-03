@@ -38,6 +38,7 @@ void GrindController::init(WeightSensor* lc, Grinder* gr, Preferences* prefs) {
     grinder_purge_mode_for_session = static_cast<GrinderPurgeMode>(GRIND_PURGE_MODE_DEFAULT);
     grinder_purge_amount_g_for_session = GRIND_PURGE_AMOUNT_DEFAULT_G;
     last_error_message[0] = '\0';
+    last_error_title[0] = '\0';
     last_session_result_ = GrindSessionResult::UNKNOWN;
     control_loop_paused_ = false;
 
@@ -202,6 +203,7 @@ bool GrindController::start_grind(float target, uint32_t time_ms, GrindMode grin
     session_end_flash_queued = false;
 
     last_error_message[0] = '\0';
+    last_error_title[0] = '\0';
 
     session_descriptor.mode = mode;
     session_descriptor.target_weight = target_weight;
@@ -265,6 +267,7 @@ void GrindController::return_to_idle() {
         grinder_purge_mode_for_session = static_cast<GrinderPurgeMode>(GRIND_PURGE_MODE_DEFAULT);
         grinder_purge_amount_g_for_session = GRIND_PURGE_AMOUNT_DEFAULT_G;
         last_error_message[0] = '\0';
+        last_error_title[0] = '\0';
         if (active_strategy) {
             active_strategy->on_exit(session_descriptor, strategy_context);
             active_strategy = nullptr;
@@ -289,17 +292,8 @@ void GrindController::stop_grind() {
         return;
     }
     
-    const uint32_t manual_runtime_ms =
-        (mode == GrindMode::MANUAL && time_grind_start_ms > 0)
-            ? millis() - time_grind_start_ms
-            : 0;
+    queue_manual_runtime(millis());
     grinder->stop();
-    if (manual_runtime_ms > 0) {
-        FlashOpRequest request = {};
-        request.operation_type = FlashOpRequest::UPDATE_MANUAL_RUNTIME;
-        request.motor_runtime_ms = manual_runtime_ms;
-        queue_flash_operation(request);
-    }
     
     // Cancelled grinds just discard PSRAM data and go to IDLE
     grind_logger.discard_current_session();
@@ -311,6 +305,7 @@ void GrindController::stop_grind() {
     grinder_purge_mode_for_session = static_cast<GrinderPurgeMode>(GRIND_PURGE_MODE_DEFAULT);
     grinder_purge_amount_g_for_session = GRIND_PURGE_AMOUNT_DEFAULT_G;
     last_error_message[0] = '\0';
+    last_error_title[0] = '\0';
     if (active_strategy) {
         active_strategy->on_exit(session_descriptor, strategy_context);
         active_strategy = nullptr;
@@ -440,15 +435,19 @@ void GrindController::update() {
             // time-mode session against an undefined zero reference.
             if (mode != GrindMode::MANUAL && weight_sensor && weight_sensor->is_tare_in_progress()) break;
             float pre_tare_weight = weight_sensor ? weight_sensor->get_weight_low_latency() : 0.0f;
-            if (mode == GrindMode::WEIGHT) {
-                net_weight_removal_guard_.reset(pre_tare_weight);
-                if (net_weight_removal_guard_.has_reference()) {
-                    queue_log_message("[SCALE] Pre-tare vessel reference: %.2fg; removal threshold: %.2fg\n",
-                                      net_weight_removal_guard_.reference_weight_g(),
-                                      net_weight_removal_guard_.removal_threshold_g());
-                } else {
-                    queue_log_message("[SCALE] No vessel reference; removal guard disabled for this grind\n");
-                }
+            // Weight grinds tare next, so they watch the net weight against
+            // zero. Time and manual grinds keep the starting weight.
+            const bool usable_scale = weight_sensor && weight_sensor->has_recent_sample() &&
+                                      !weight_sensor->has_hardware_fault();
+            const float vessel_weight = usable_scale ? pre_tare_weight : 0.0f;
+            net_weight_removal_guard_.reset(vessel_weight,
+                                            mode == GrindMode::WEIGHT ? 0.0f : vessel_weight);
+            if (net_weight_removal_guard_.has_reference()) {
+                queue_log_message("[SCALE] Vessel reference: %.2fg; removal threshold: %.2fg\n",
+                                  net_weight_removal_guard_.reference_weight_g(),
+                                  net_weight_removal_guard_.removal_threshold_g());
+            } else {
+                queue_log_message("[SCALE] No vessel reference; removal guard disabled for this grind\n");
             }
             if (mode == GrindMode::MANUAL) {
                 if (!grinder->is_grinding()) grinder->start();
@@ -639,16 +638,26 @@ void GrindController::update() {
     // Emit progress update events every cycle for responsive UI
     emit_progress_update(loop_data);
 
-    // Detect a removed cup/portafilter relative to its measured pre-tare
+    // Detect a removed cup/portafilter relative to its measured starting
     // weight. Multiple consecutive samples are required so an isolated ADC
-    // spike cannot stop the grind.
-    const bool net_weight_guard_active =
-        mode == GrindMode::WEIGHT &&
-        phase != GrindPhase::COMPLETED && phase != GrindPhase::TIMEOUT &&
-        phase != GrindPhase::IDLE && phase != GrindPhase::INITIALIZING &&
-        phase != GrindPhase::SETUP && phase != GrindPhase::TARING &&
-        phase != GrindPhase::TARE_CONFIRM &&
-        grinder->is_motor_settled();
+    // spike cannot stop the grind. A paused time grind may be lifted to
+    // distribute the grounds; the check resumes with the motor.
+    bool guarded_phase = false;
+    switch (mode) {
+        case GrindMode::WEIGHT:
+            guarded_phase = phase != GrindPhase::COMPLETED && phase != GrindPhase::TIMEOUT &&
+                            phase != GrindPhase::IDLE && phase != GrindPhase::INITIALIZING &&
+                            phase != GrindPhase::SETUP && phase != GrindPhase::TARING &&
+                            phase != GrindPhase::TARE_CONFIRM;
+            break;
+        case GrindMode::TIME:
+            guarded_phase = phase == GrindPhase::TIME_GRINDING && !grind_paused_;
+            break;
+        case GrindMode::MANUAL:
+            guarded_phase = phase == GrindPhase::MANUAL_GRINDING;
+            break;
+    }
+    const bool net_weight_guard_active = guarded_phase && grinder->is_motor_settled();
     bool vessel_removed = false;
     if (net_weight_guard_active) {
         vessel_removed = net_weight_removal_guard_.update(loop_data.current_weight);
@@ -659,30 +668,22 @@ void GrindController::update() {
     if (vessel_removed) {
         timeout_phase = phase;
         grinder->stop();
+        queue_manual_runtime(loop_data.now);
         last_session_result_ = GrindSessionResult::ERROR;
 
-        queue_log_message("--- VESSEL REMOVAL FAILSAFE: %.2fg <= %.2fg (pre-tare %.2fg) in phase %s ---\n",
+        queue_log_message("--- VESSEL REMOVAL FAILSAFE: %.2fg <= %.2fg (vessel %.2fg) in phase %s ---\n",
                           loop_data.current_weight,
                           net_weight_removal_guard_.removal_threshold_g(),
                           net_weight_removal_guard_.reference_weight_g(),
                           get_phase_name(timeout_phase));
-        set_error_message("Err: neg wt");
+        set_error_message("Portafilter removed", "STOPPED");
         switch_phase(GrindPhase::TIMEOUT, loop_data);
     }
     // Only check timeout during active grinding phases, not during completion states or user confirmation
     else if (phase != GrindPhase::COMPLETED && phase != GrindPhase::TIMEOUT && phase != GrindPhase::PURGE_CONFIRM && check_timeout()) {
         timeout_phase = phase;
-        const uint32_t manual_runtime_ms =
-            (mode == GrindMode::MANUAL && time_grind_start_ms > 0)
-                ? loop_data.now - time_grind_start_ms
-                : 0;
         grinder->stop();
-        if (manual_runtime_ms > 0) {
-            FlashOpRequest request = {};
-            request.operation_type = FlashOpRequest::UPDATE_MANUAL_RUNTIME;
-            request.motor_runtime_ms = manual_runtime_ms;
-            queue_flash_operation(request);
-        }
+        queue_manual_runtime(loop_data.now);
         last_session_result_ = GrindSessionResult::TIMEOUT;
         
         queue_log_message("--- GRIND TIMEOUT in phase %s ---\n", get_phase_name(timeout_phase));
@@ -906,6 +907,8 @@ void GrindController::switch_phase(GrindPhase new_phase, const GrindLoopData& lo
         }
         std::strncpy(event_data.error_message, last_error_message,
                      sizeof(event_data.error_message) - 1);
+        std::strncpy(event_data.error_title, last_error_title,
+                     sizeof(event_data.error_title) - 1);
         // Use non-blocking high latency weight instead of precision settled weight
         event_data.error_weight = weight_sensor ? weight_sensor->get_weight_high_latency() : 0.0f;
         final_weight = event_data.error_weight;
@@ -1186,13 +1189,28 @@ void GrindController::process_queued_log_messages() {
     }
 }
 
-void GrindController::set_error_message(const char* message) {
+void GrindController::set_error_message(const char* message, const char* title) {
+    last_error_title[0] = '\0';
+    if (title && title[0]) {
+        strncpy(last_error_title, title, sizeof(last_error_title) - 1);
+        last_error_title[sizeof(last_error_title) - 1] = '\0';
+    }
     if (!message || !message[0]) {
         last_error_message[0] = '\0';
         return;
     }
     strncpy(last_error_message, message, sizeof(last_error_message) - 1);
     last_error_message[sizeof(last_error_message) - 1] = '\0';
+}
+
+// Manual grinds are not logged as sessions, but their motor time still
+// counts towards the lifetime statistics however the grind ends.
+void GrindController::queue_manual_runtime(uint32_t now_ms) {
+    if (mode != GrindMode::MANUAL || time_grind_start_ms == 0) return;
+    FlashOpRequest request = {};
+    request.operation_type = FlashOpRequest::UPDATE_MANUAL_RUNTIME;
+    request.motor_runtime_ms = now_ms - time_grind_start_ms;
+    queue_flash_operation(request);
 }
 
 void GrindController::start_additional_pulse() {

@@ -188,6 +188,10 @@ bool ScreenTimeoutController::is_protected_state() const {
     }
 
     UIState state = ui_manager_->state_machine->get_current_state();
+    if (state == UIState::GRIND_COMPLETE && ui_manager_->grinding_controller_ &&
+        ui_manager_->grinding_controller_->is_result_timer_running()) {
+        return true;  // Keep the counting finished screen readable
+    }
     return state == UIState::GRINDING ||
            state == UIState::OTA_UPDATE ||
            state == UIState::OTA_UPDATE_FAILED;

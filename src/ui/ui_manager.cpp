@@ -479,7 +479,6 @@ void UIManager::update_auto_actions() {
 
     if (state_machine->is_state(UIState::GRIND_COMPLETE) ||
         state_machine->is_state(UIState::GRIND_TIMEOUT)) {
-        constexpr float kCompleteExitThresholdG = 2.0f;  // Treat scale as empty once weight drops below this point
         const float live_weight = sensor->get_weight_low_latency();
         const bool rearm_ready =
             (now - auto_actions_.last_auto_return_ms) >= USER_AUTO_GRIND_REARM_DELAY_MS;
@@ -489,7 +488,7 @@ void UIManager::update_auto_actions() {
                              : GrindController::GrindSessionResult::UNKNOWN;
         const bool completed_result = is_completed_grind_result(session_result);
 
-        if (completed_result && live_weight <= kCompleteExitThresholdG && rearm_ready) {
+        if (completed_result && live_weight <= SYS_CUP_REMOVED_THRESHOLD_G && rearm_ready) {
             LOG_BLE("[AUTO ACTION] Detected near-empty scale - returning to ready screen\n");
             auto_actions_.last_auto_return_ms = now;
             if (grind_controller) {

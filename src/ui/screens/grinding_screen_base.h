@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <cstring>
 #include <lvgl.h>
 
 // How the current grind stands, for layouts that colour the result.
@@ -31,7 +32,25 @@ public:
 
     // Only layouts that colour the result (the circle screen) implement this.
     virtual void set_outcome(GrindScreenOutcome) {}
+
+    // Count-up shown on the finished screen; nullptr or "" hides it.
+    virtual void update_result_timer(const char* text) = 0;
+    virtual lv_obj_t* get_result_timer_label() const = 0;
 };
+
+// Shows `text` in a result timer label, hiding it for nullptr or "". Only
+// redraws when the text changes, which is once a second while counting.
+inline void set_result_timer_label(lv_obj_t* label, const char* text) {
+    if (!label) return;
+    if (!text || !text[0]) {
+        lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+        return;
+    }
+    if (std::strcmp(lv_label_get_text(label), text) != 0) {
+        lv_label_set_text(label, text);
+    }
+    lv_obj_clear_flag(label, LV_OBJ_FLAG_HIDDEN);
+}
 
 // Stored as an int in the "grind_layout" preference and used as the Grind
 // Settings radio-button index, so keep the values stable.

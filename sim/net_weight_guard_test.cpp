@@ -1,3 +1,5 @@
+// The simulator builds in Release mode, so make sure the checks stay compiled in.
+#undef NDEBUG
 #include "controllers/net_weight_guard.h"
 
 #include <cassert>
@@ -29,6 +31,23 @@ int main() {
     guard.reset(0.0f);
     assert(!guard.has_reference());
     assert(!guard.update(-100.0f));
+
+    // Time and manual grinds do not tare: the reading starts at the vessel
+    // weight and grounds add to it. Lifting the portafilter drops it to about
+    // zero; a reading that stays near the starting weight is not a removal.
+    guard.reset(410.0f, 410.0f);
+    assert(guard.removal_threshold_g() > 40.0f && guard.removal_threshold_g() < 42.0f);
+    assert(!guard.update(410.0f));
+    assert(!guard.update(425.0f));
+    assert(!guard.update(120.0f));  // pushed up hard in the holder, still not removed
+    assert(!guard.update(0.5f));
+    assert(!guard.update(0.2f));
+    assert(guard.update(0.1f));
+
+    // A manual grind after taring with the cup on has no vessel reference.
+    guard.reset(0.3f, 0.3f);
+    assert(!guard.has_reference());
+    assert(!guard.update(-410.0f));
 
     return 0;
 }

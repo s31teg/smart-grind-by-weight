@@ -150,6 +150,17 @@ void GrindingScreen::set_outcome(GrindScreenOutcome outcome) {
     circle_screen.set_outcome(outcome);
 }
 
+// Kept on every layout so tapping to change layout keeps the timer.
+void GrindingScreen::update_result_timer(const char* text) {
+    arc_screen.update_result_timer(text);
+    chart_screen.update_result_timer(text);
+    circle_screen.update_result_timer(text);
+}
+
+lv_obj_t* GrindingScreen::get_result_timer_label() const {
+    return active_screen ? active_screen->get_result_timer_label() : nullptr;
+}
+
 void GrindingScreen::reset_chart_data() {
     chart_screen.reset_chart_data();
 }

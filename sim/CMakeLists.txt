@@ -105,6 +105,13 @@ target_include_directories(scale-readiness-test PRIVATE
     "${PROJECT_ROOT}/src"
 )
 
+add_executable(result-timer-test
+    result_timer_test.cpp
+)
+target_include_directories(result-timer-test PRIVATE
+    "${PROJECT_ROOT}/src"
+)
+
 if(MSVC)
     target_compile_options(smart-grind-sim PRIVATE /W4 /permissive-)
 endif()
@@ -120,6 +127,10 @@ if(BUILD_TESTING)
     set_tests_properties(simulator_manual_smoke PROPERTIES TIMEOUT 15)
     add_test(NAME simulator_scale_status COMMAND smart-grind-sim --scale-status-check)
     set_tests_properties(simulator_scale_status PROPERTIES TIMEOUT 10)
+    add_test(NAME simulator_result_timer COMMAND smart-grind-sim --result-timer-check)
+    set_tests_properties(simulator_result_timer PROPERTIES TIMEOUT 10)
+    add_test(NAME simulator_status_icons COMMAND smart-grind-sim --status-icon-check)
+    set_tests_properties(simulator_status_icons PROPERTIES TIMEOUT 10)
     add_test(NAME simulator_circle_smoke COMMAND smart-grind-sim --circle-smoke)
     set_tests_properties(simulator_circle_smoke PROPERTIES TIMEOUT 20)
     add_test(NAME display_idle_policy COMMAND display-idle-policy-test)
@@ -134,4 +145,6 @@ if(BUILD_TESTING)
     set_tests_properties(auto_start_policy PROPERTIES TIMEOUT 5)
     add_test(NAME scale_readiness COMMAND scale-readiness-test)
     set_tests_properties(scale_readiness PROPERTIES TIMEOUT 5)
+    add_test(NAME result_timer COMMAND result-timer-test)
+    set_tests_properties(result_timer PROPERTIES TIMEOUT 5)
 endif()

@@ -340,6 +340,260 @@ bool check_scale_status_layout(lv_display_t* display) {
     return true;
 }
 
+bool areas_overlap(const lv_area_t& a, const lv_area_t& b) {
+    return a.x1 <= b.x2 && b.x1 <= a.x2 && a.y1 <= b.y2 && b.y1 <= a.y2;
+}
+
+// On every layout's finished screen the result timer must clear the text
+// beside it and the OK button, and stay inside the arc on the arc layout.
+bool check_result_timer_layout(lv_display_t* display) {
+    const char* const names[] = {"arc", "chart", "circle"};
+    lv_area_t button_area;
+    bool all_ok = true;
+
+    ready_screen.hide();
+    for (int i = 0; i < 3; ++i) {
+        for (IGrindingScreen* screen : grind_screens) {
+            screen->hide();
+        }
+        IGrindingScreen* screen = grind_screens[i];
+        screen->update_profile_name("DOUBLE");
+        screen->update_target_weight(18.0f);
+        screen->update_current_weight(18.1f);
+        screen->update_progress(100);
+        screen->set_outcome(GrindScreenOutcome::COMPLETE);
+        screen->update_result_timer("12:34");
+        screen->show();
+        lv_refr_now(display);
+        lv_obj_get_coords(grind_button, &button_area);
+
+        lv_obj_t* timer = screen->get_result_timer_label();
+        lv_area_t timer_area;
+        lv_obj_get_coords(timer, &timer_area);
+        bool ok = !lv_obj_has_flag(timer, LV_OBJ_FLAG_HIDDEN) &&
+                  timer_area.x1 >= 0 && timer_area.x2 < kDisplayWidth &&
+                  timer_area.y2 + 4 <= button_area.y1;
+
+        lv_obj_t* parent = lv_obj_get_parent(timer);
+        for (uint32_t c = 0; c < lv_obj_get_child_count(parent); ++c) {
+            lv_obj_t* sibling = lv_obj_get_child(parent, static_cast<int32_t>(c));
+            if (sibling == timer || lv_obj_has_flag(sibling, LV_OBJ_FLAG_HIDDEN)) continue;
+            if (!lv_obj_check_type(sibling, &lv_label_class) &&
+                !lv_obj_check_type(sibling, &lv_spangroup_class)) continue;
+            lv_area_t sibling_area;
+            lv_obj_get_coords(sibling, &sibling_area);
+            if (areas_overlap(timer_area, sibling_area)) ok = false;
+        }
+
+        if (lv_obj_check_type(parent, &lv_arc_class)) {
+            lv_area_t arc_area;
+            lv_obj_get_coords(parent, &arc_area);
+            const float cx = (arc_area.x1 + arc_area.x2) / 2.0f;
+            const float cy = (arc_area.y1 + arc_area.y2) / 2.0f;
+            const float inner_radius = lv_area_get_width(&arc_area) / 2.0f - 12.0f;
+            const float xs[] = {static_cast<float>(timer_area.x1), static_cast<float>(timer_area.x2)};
+            const float ys[] = {static_cast<float>(timer_area.y1), static_cast<float>(timer_area.y2)};
+            for (float x : xs) {
+                for (float y : ys) {
+                    if (std::hypot(x - cx, y - cy) > inner_radius) ok = false;
+                }
+            }
+        }
+
+        std::printf("[result-timer] %s timer y=%d..%d x=%d..%d button y=%d %s\n", names[i],
+                    static_cast<int>(timer_area.y1), static_cast<int>(timer_area.y2),
+                    static_cast<int>(timer_area.x1), static_cast<int>(timer_area.x2),
+                    static_cast<int>(button_area.y1), ok ? "ok" : "FAIL");
+        all_ok = all_ok && ok;
+
+        screen->update_result_timer(nullptr);
+        if (!lv_obj_has_flag(timer, LV_OBJ_FLAG_HIDDEN)) all_ok = false;
+
+        // The removal stop's error screen must fit without scrolling and keep
+        // its text clear of the button.
+        screen->update_profile_name("STOPPED");
+        screen->update_target_weight_text("Portafilter removed");
+        screen->set_outcome(GrindScreenOutcome::FAILED);
+        lv_refr_now(display);
+        lv_obj_t* root = screen->get_screen();
+        // The circle layout overhangs the display on purpose and cannot scroll.
+        bool error_ok = !lv_obj_has_flag(root, LV_OBJ_FLAG_SCROLLABLE) ||
+                        (lv_obj_get_scroll_top(root) <= 0 && lv_obj_get_scroll_bottom(root) <= 0);
+        int32_t lowest_text_y = 0;
+        for (uint32_t c = 0; c < lv_obj_get_child_count(root); ++c) {
+            lv_obj_t* child = lv_obj_get_child(root, static_cast<int32_t>(c));
+            if (lv_obj_has_flag(child, LV_OBJ_FLAG_HIDDEN)) continue;
+            if (!lv_obj_check_type(child, &lv_label_class) &&
+                !lv_obj_check_type(child, &lv_spangroup_class)) continue;
+            lv_area_t area;
+            lv_obj_get_coords(child, &area);
+            lowest_text_y = std::max(lowest_text_y, static_cast<int32_t>(area.y2));
+            if (area.y1 < 0 || area.y2 + 4 > button_area.y1) error_ok = false;
+        }
+        std::printf("[result-timer] %s error screen lowest text y=%d scroll=%d/%d %s\n", names[i],
+                    static_cast<int>(lowest_text_y),
+                    static_cast<int>(lv_obj_get_scroll_top(root)),
+                    static_cast<int>(lv_obj_get_scroll_bottom(root)), error_ok ? "ok" : "FAIL");
+        all_ok = all_ok && error_ok;
+        screen->set_outcome(GrindScreenOutcome::IN_PROGRESS);
+    }
+    if (!all_ok) std::fprintf(stderr, "Result timer layout check failed.\n");
+    return all_ok;
+}
+
+// The firmware's status icons, placed exactly as StatusIndicatorController
+// places them, with the widest glyphs it shows.
+lv_obj_t* status_icons[4] = {};
+
+void create_status_icons() {
+    const char* symbols[4] = {LV_SYMBOL_BLUETOOTH, LV_SYMBOL_WIFI, LV_SYMBOL_WARNING, LV_SYMBOL_REFRESH};
+    for (int i = 0; i < 4; ++i) {
+        status_icons[i] = lv_label_create(lv_screen_active());
+        lv_label_set_text(status_icons[i], symbols[i]);
+        lv_obj_set_style_text_font(status_icons[i], &lv_font_montserrat_24, 0);
+        lv_obj_align(status_icons[i], LV_ALIGN_TOP_RIGHT,
+                     -(THEME_STATUS_ICON_RIGHT_PX + i * THEME_STATUS_ICON_SPACING_PX),
+                     THEME_STATUS_ICON_TOP_PX);
+    }
+}
+
+bool is_status_icon(lv_obj_t* obj) {
+    for (lv_obj_t* icon : status_icons) {
+        if (obj == icon) return true;
+    }
+    return false;
+}
+
+// Reports every visible label, span group, button, arc or chart that sits
+// under a status icon, or (for content other than the button) under the
+// Grind button.
+int report_icon_overlaps(lv_obj_t* parent, const char* scenario) {
+    int overlaps = 0;
+    lv_area_t button_area;
+    lv_obj_get_coords(grind_button, &button_area);
+    for (uint32_t c = 0; c < lv_obj_get_child_count(parent); ++c) {
+        lv_obj_t* child = lv_obj_get_child(parent, static_cast<int32_t>(c));
+        if (is_status_icon(child) || child == grind_button || child == pulse_button ||
+            lv_obj_has_flag(child, LV_OBJ_FLAG_HIDDEN)) {
+            continue;
+        }
+        const bool text = lv_obj_check_type(child, &lv_label_class) ||
+                          lv_obj_check_type(child, &lv_spangroup_class);
+        const bool control = lv_obj_check_type(child, &lv_button_class);
+        const bool content = lv_obj_check_type(child, &lv_arc_class) ||
+                             lv_obj_check_type(child, &lv_chart_class);
+        if (text || control || content) {
+            lv_area_t area;
+            lv_obj_get_coords(child, &area);
+            const bool on_display = area.x2 >= 0 && area.x1 < kDisplayWidth;
+            for (lv_obj_t* icon : status_icons) {
+                lv_area_t icon_area;
+                lv_obj_get_coords(icon, &icon_area);
+                if (on_display && areas_overlap(area, icon_area)) {
+                    std::printf("[status-icons] %s: icon over y=%d..%d x=%d..%d\n", scenario,
+                                static_cast<int>(area.y1), static_cast<int>(area.y2),
+                                static_cast<int>(area.x1), static_cast<int>(area.x2));
+                    ++overlaps;
+                    break;
+                }
+            }
+            if (on_display && !control && areas_overlap(area, button_area) &&
+                !lv_obj_has_flag(grind_button, LV_OBJ_FLAG_HIDDEN)) {
+                std::printf("[status-icons] %s: Grind button over y=%d..%d\n", scenario,
+                            static_cast<int>(area.y1), static_cast<int>(area.y2));
+                ++overlaps;
+            }
+        }
+        overlaps += report_icon_overlaps(child, scenario);
+    }
+    return overlaps;
+}
+
+int check_icons(lv_display_t* display, const char* scenario) {
+    lv_refr_now(display);
+    const int overlaps = report_icon_overlaps(lv_screen_active(), scenario);
+    if (overlaps == 0) std::printf("[status-icons] %s: clear\n", scenario);
+    return overlaps;
+}
+
+// Ready and grinding screens show the status icons, so nothing on them may
+// sit under the icons.
+bool check_status_icon_layout(lv_display_t* display) {
+    create_status_icons();
+    int overlaps = 0;
+
+    for (IGrindingScreen* screen : grind_screens) screen->hide();
+    ready_screen.show();
+    const char* tab_names[ReadyScreen::TAB_COUNT] = {"ready manual", "ready single", "ready double",
+                                                     "ready custom", "ready wi-fi", "ready menu"};
+    for (int tab = 0; tab < ReadyScreen::TAB_COUNT; ++tab) {
+        lv_tabview_set_act(ready_screen.get_tabview(), static_cast<uint32_t>(tab), LV_ANIM_OFF);
+        overlaps += check_icons(display, tab_names[tab]);
+    }
+    ready_screen.hide();
+
+    const char* layout_names[] = {"arc", "chart", "circle"};
+    const char* profile_names[] = {"SINGLE", "DOUBLE", "CUSTOM", "MANUAL", "STOPPED"};
+    char scenario[64];
+    for (int i = 0; i < 3; ++i) {
+        for (IGrindingScreen* screen : grind_screens) screen->hide();
+        IGrindingScreen* screen = grind_screens[i];
+        screen->show();
+        screen->update_target_weight(18.0f);
+        for (const char* name : profile_names) {
+            screen->set_outcome(GrindScreenOutcome::IN_PROGRESS);
+            screen->update_profile_name(name);
+            screen->update_current_weight(12.3f);
+            screen->update_progress(60);
+            std::snprintf(scenario, sizeof(scenario), "%s grinding %s", layout_names[i], name);
+            overlaps += check_icons(display, scenario);
+        }
+        screen->update_profile_name("DOUBLE");
+        screen->set_outcome(GrindScreenOutcome::COMPLETE);
+        screen->update_result_timer("12:34");
+        std::snprintf(scenario, sizeof(scenario), "%s finished", layout_names[i]);
+        overlaps += check_icons(display, scenario);
+        screen->update_result_timer(nullptr);
+        screen->update_profile_name("STOPPED");
+        screen->update_target_weight_text("Portafilter removed");
+        screen->set_outcome(GrindScreenOutcome::FAILED);
+        std::snprintf(scenario, sizeof(scenario), "%s stopped", layout_names[i]);
+        overlaps += check_icons(display, scenario);
+        screen->set_outcome(GrindScreenOutcome::IN_PROGRESS);
+        screen->hide();
+    }
+
+    // Time mode adds a "Time:" line to the chart readout and shows elapsed
+    // seconds in place of the weight.
+    arc_screen.set_time_mode(true);
+    chart_screen.set_time_mode(true);
+    circle_screen.set_time_mode(true);
+    arc_screen.update_target_time(12.0f);
+    chart_screen.update_target_time(12.0f);
+    circle_screen.update_target_time(12.0f);
+    for (int i = 0; i < 3; ++i) {
+        IGrindingScreen* screen = grind_screens[i];
+        screen->show();
+        screen->update_profile_name("CUSTOM");
+        screen->update_progress(40);
+        std::snprintf(scenario, sizeof(scenario), "%s time grinding", layout_names[i]);
+        overlaps += check_icons(display, scenario);
+        screen->set_outcome(GrindScreenOutcome::COMPLETE);
+        screen->update_result_timer("12:34");
+        std::snprintf(scenario, sizeof(scenario), "%s time finished", layout_names[i]);
+        overlaps += check_icons(display, scenario);
+        screen->update_result_timer(nullptr);
+        screen->set_outcome(GrindScreenOutcome::IN_PROGRESS);
+        screen->hide();
+    }
+    arc_screen.set_time_mode(false);
+    chart_screen.set_time_mode(false);
+    circle_screen.set_time_mode(false);
+
+    if (overlaps != 0) std::fprintf(stderr, "Status icon layout check failed.\n");
+    return overlaps == 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -349,6 +603,8 @@ int main(int argc, char** argv) {
     const bool manual_smoke = has_arg(argc, argv, "--manual-smoke");
     const bool circle_smoke = has_arg(argc, argv, "--circle-smoke");
     const bool scale_status_check = has_arg(argc, argv, "--scale-status-check");
+    const bool result_timer_check = has_arg(argc, argv, "--result-timer-check");
+    const bool status_icon_check = has_arg(argc, argv, "--status-icon-check");
 
     if (smoke_test) {
         std::puts("[smoke] starting simulator");
@@ -360,7 +616,7 @@ int main(int argc, char** argv) {
 
     const bool automated_run =
         smoke_test || benchmark || swipe_benchmark || manual_smoke || circle_smoke ||
-        scale_status_check;
+        scale_status_check || result_timer_check || status_icon_check;
     lv_display_t* display =
         sim_platform::create_display(kDisplayWidth, kDisplayHeight, automated_run);
     if (!display) {
@@ -393,6 +649,14 @@ int main(int argc, char** argv) {
 
     if (scale_status_check) {
         return check_scale_status_layout(display) ? 0 : 8;
+    }
+
+    if (result_timer_check) {
+        return check_result_timer_layout(display) ? 0 : 9;
+    }
+
+    if (status_icon_check) {
+        return check_status_icon_layout(display) ? 0 : 10;
     }
 
     const uint32_t smoke_started_ms = now_ms();

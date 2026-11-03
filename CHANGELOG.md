@@ -6,6 +6,33 @@ line. Earlier release history remains available in the original project's
 
 ## [Unreleased]
 
+### Status icons
+
+- The Bluetooth, Wi-Fi, warning and update icons no longer cover text or
+  buttons. They show on the main screen and the grinding, finished and error
+  screens, which now keep their text below the icons. Menus, the target
+  editor, calibration, Pulse Tune, the purge prompt and pop-ups use the top of
+  the screen for their own titles and buttons, so the icons are hidden there.
+- The arc and chart grinding screens start their content below the icons. On
+  the chart screen the finished timer sits in the chart's top-left corner.
+- The Wi-Fi page on the main screen starts below the icons, with a slightly
+  smaller setup QR code so a join-failure message still fits.
+
+### Finished screen and lifted portafilter
+
+- The finished screen shows a timer under the weight that counts up from the
+  moment the grind finished, so you can see how long the grounds have been
+  waiting. It stops when you lift the cup. While the cup stays on, the
+  finished screen stays up and the display stays bright, for at most 30
+  minutes; the Show for time now starts when the cup is lifted. In time mode
+  a pulse restarts the timer.
+- Lifting the portafilter while the grinder runs now stops time and manual
+  grinds too, not only weight grinds. The screen shows "STOPPED" and
+  "Portafilter removed" instead of "ERROR" and "Err: neg wt". A paused time
+  grind can still be lifted to distribute the grounds.
+- A manual grind stopped this way still counts its motor time in the lifetime
+  statistics.
+
 ### Scale startup
 
 - After power-on the profile pages show a spinner with "SCALE STARTING" until

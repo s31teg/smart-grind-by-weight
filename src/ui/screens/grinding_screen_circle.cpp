@@ -13,6 +13,7 @@ constexpr int32_t kCircleCenterOffsetY = kCircleCenterY - HW_DISPLAY_HEIGHT_PX /
 constexpr int32_t kProfileTopY = kCircleCenterY - 77;
 constexpr int32_t kTargetTopY = kCircleCenterY + 40;
 constexpr int32_t kTargetWidthPx = 210;
+constexpr int32_t kResultTimerTopY = kTargetTopY + 36;
 
 // Progress arrives in 1% steps a few times a second; easing between them
 // keeps the circle growing smoothly instead of jumping.
@@ -95,6 +96,11 @@ void GrindingScreenCircle::create() {
     lv_obj_set_width(target_label, kTargetWidthPx);
     lv_label_set_long_mode(target_label, LV_LABEL_LONG_WRAP);
     lv_obj_align(target_label, LV_ALIGN_TOP_MID, 0, kTargetTopY);
+
+    result_timer_label = create_label(&lv_font_montserrat_24);
+    lv_label_set_text(result_timer_label, "");
+    lv_obj_align(result_timer_label, LV_ALIGN_TOP_MID, 0, kResultTimerTopY);
+    lv_obj_add_flag(result_timer_label, LV_OBJ_FLAG_HIDDEN);
 
     displayed_progress = 0;
     outcome = GrindScreenOutcome::IN_PROGRESS;
@@ -206,6 +212,10 @@ void GrindingScreenCircle::set_time_mode(bool enabled) {
     time_mode = enabled;
 }
 
+void GrindingScreenCircle::update_result_timer(const char* text) {
+    set_result_timer_label(result_timer_label, text);
+}
+
 // The whole display switches to the result colour in one frame. Every part is
 // a solid colour, so the frame is quick to draw and send to the panel.
 void GrindingScreenCircle::show_result_colors() {
@@ -231,6 +241,7 @@ void GrindingScreenCircle::apply_colors(bool show_result) {
         lv_color_hex(complete ? THEME_COLOR_TEXT_PRIMARY : THEME_COLOR_GRIND_CIRCLE_TEXT_SECONDARY);
     lv_obj_set_style_text_color(profile_label, secondary_text, 0);
     lv_obj_set_style_text_color(target_label, secondary_text, 0);
+    lv_obj_set_style_text_color(result_timer_label, secondary_text, 0);
 }
 
 void GrindingScreenCircle::resize_circle(int32_t diameter, bool animate) {

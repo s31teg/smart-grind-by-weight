@@ -52,6 +52,7 @@ struct GrindEventData {
     // Additional data for specific events
     float final_weight;           // For COMPLETED event
     char error_message[32];      // Owned copy for TIMEOUT/ERROR event
+    char error_title[16];        // Error screen heading; empty means "ERROR"
     float error_weight;           // For TIMEOUT/ERROR event
     int error_progress;           // For TIMEOUT/ERROR event
     bool background_active;       // For BACKGROUND_CHANGE event
