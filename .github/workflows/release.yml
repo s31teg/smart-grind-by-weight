@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*'  # Triggers on version tags like v1.0.0, v1.2.3
+  # Rebuild a release by hand: run this workflow on its tag (Use workflow from
+  # -> Tags -> vX.Y.Z).
+  workflow_dispatch:
 
 permissions:
   contents: write
